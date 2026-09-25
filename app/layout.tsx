@@ -1,12 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import {
-  ClerkProvider,
-  Show,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/nextjs";
+import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
+import { SiteHeader } from "@/components/site/site-header";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,31 +13,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const playfair = Playfair_Display({
+  variable: "--font-serif",
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
-  title: "Parlagmatic",
-  description: "Parlianment Hackathon",
+  title: "Монгол Улсын Их Хурал",
+  description:
+    "Иргэдийн санал, хууль тогтоомжийн хэрэгжилтийн хяналт — Монгол Улсын Их Хурлын албан ёсны платформ",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      >
-        <body className="min-h-full flex flex-col">
-          <header className="flex h-16 items-center justify-end gap-4 p-4">
-            <Show when="signed-out">
-              <SignInButton />
-              <SignUpButton />
-            </Show>
-            <Show when="signed-in">
-              <UserButton />
-            </Show>
-          </header>
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
+    <html
+      lang="mn"
+      className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased`}
+    >
+      <body className="min-h-full bg-white text-ink-900 flex flex-col font-sans">
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
+      </body>
+    </html>
   );
 }
