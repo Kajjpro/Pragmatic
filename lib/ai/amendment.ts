@@ -53,7 +53,7 @@ function makePrompt(billText: string): string {
   return `Чи Улсын Их Хурлын Тамгын газрын хууль боловсруулах зөвлөхийн туслах.
 Доорх нь "хуульд нэмэлт, өөрчлөлт оруулах тухай" хуулийн төсөл. Төслийг уншаад, хуулийн заалт бүрт хийгдэх өөрчлөлтийг жагсаа.
 
-ӨӨРЧЛӨЛТИЙН 4 ТӨРӨЛ:
+ӨӨРЧЛӨЛТИЙН 5 ТӨРӨЛ:
 1. REPLACE_WORDS — заалтын зарим үгийг солих.
    Жишээ хэллэг: "...гэснийг ...гэж өөрчилсүгэй"
    Мөн үг хасах: "...гэснийг хассугай" → newText = ""
@@ -63,6 +63,9 @@ function makePrompt(billText: string): string {
    Жишээ хэллэг: "...дараах агуулгатай ... дахь хэсэг нэмсүгэй" (эсвэл "доор дурдсан агуулгатай")
 4. REMOVE — заалтыг хүчингүй болгох.
    Жишээ хэллэг: "...хүчингүй болсонд тооцсугай"
+5. INSERT_AFTER — үгийн ДАРАА шинэ үг нэмэх.
+   Жишээ хэллэг: "..."А" гэсний дараа "Б" гэж нэмсүгэй"
+   → oldWords = "А" (нэмэхээс өмнөх үг), newText = "Б" (ЗӨВХӨН нэмэгдэж буй үг, цэг таслалтай нь яг хуулна).
 
 ДҮРЭМ:
 - clause: өөрчлөгдөж буй заалтын дугаар, зөвхөн тоо ба цэг. Жишээ: "3.1", "12.2.4". Бүтэн зүйл бол "7".
@@ -113,7 +116,25 @@ function checkOneChange(item: Record<string, unknown>, billText: string): Change
     return { action, clause, oldWords, newText, sourceQuote };
   }
 
-  // d. Нэмэх / өөрчлөн найруулах: шинэ текст төсөлд байх ёстой
+  // d. Үгийн дараа нэмэх: хоёр үг хоёулаа ишлэлд байх ёстой.
+  //    Дараа нь REPLACE_WORDS болгоно: "А" → "А Б". Ингэснээр applyChanges өөрчлөгдөх шаардлагагүй.
+  if (action === "INSERT_AFTER") {
+    if (!isInText(oldWords, sourceQuote)) {
+      return drop("oldWords ишлэлд олдсонгүй", item);
+    }
+    if (!isInText(newText, sourceQuote)) {
+      return drop("нэмэх үг ишлэлд олдсонгүй", item);
+    }
+    return {
+      action: "REPLACE_WORDS",
+      clause,
+      oldWords,
+      newText: joinWords(oldWords, newText),
+      sourceQuote,
+    };
+  }
+
+  // e. Нэмэх / өөрчлөн найруулах: шинэ текст төсөлд байх ёстой
   if (action === "ADD" || action === "REWRITE") {
     if (!isInText(newText, billText)) {
       return drop("newText төсөлд олдсонгүй", item);
@@ -121,13 +142,24 @@ function checkOneChange(item: Record<string, unknown>, billText: string): Change
     return { action, clause, newText, sourceQuote };
   }
 
-  // e. Хүчингүй болгох: нэмэлт шалгалт хэрэггүй
+  // f. Хүчингүй болгох: нэмэлт шалгалт хэрэггүй
   if (action === "REMOVE") {
     return { action, clause, sourceQuote };
   }
 
-  // f. Бидний мэдэхгүй action ирвэл хаяна
+  // g. Бидний мэдэхгүй action ирвэл хаяна
   return drop("action буруу: " + action, item);
+}
+
+// Хуучин үгийн араас шинэ үгийг залгана.
+// Шинэ үг цэг таслалаар эхэлбэл зайгүй: "иргэн" + ", хуулийн этгээд" → "иргэн, хуулийн этгээд"
+// Бусад үед зайтай: "төрийн байгууллага" + "болон ..." → "төрийн байгууллага болон ..."
+function joinWords(anchor: string, inserted: string): string {
+  const firstChar = inserted.charAt(0);
+  if (firstChar === "," || firstChar === ";" || firstChar === "." || firstChar === ":") {
+    return anchor + inserted;
+  }
+  return anchor + " " + inserted;
 }
 
 // Хаясан мөрийг консолд харуулна (яагаад хаяснаа шалгахад хэрэгтэй)
@@ -193,6 +225,22 @@ function fakeChanges(): Change[] {
       newText: "",
       sourceQuote:
         "6 дугаар зүйл.Агаарын тухай хуулийн 20 дугаар зүйлийн 20.2 дахь хэсгийн “хүндэтгэн үзэх шалтгаангүйгээр” гэснийг хассугай.",
+    },
+    {
+      action: "REPLACE_WORDS", // "гэсний дараа ... гэж нэмсүгэй" → REPLACE_WORDS болгосон
+      clause: "21.1",
+      oldWords: "иргэн",
+      newText: "иргэн, хуулийн этгээд",
+      sourceQuote:
+        "7 дугаар зүйл.Агаарын тухай хуулийн 21 дүгээр зүйлийн 21.1 дэх хэсгийн “иргэн” гэсний дараа “, хуулийн этгээд” гэж нэмсүгэй.",
+    },
+    {
+      action: "REPLACE_WORDS",
+      clause: "22.3",
+      oldWords: "төрийн байгууллага",
+      newText: "төрийн байгууллага болон орон нутгийн өөрөө удирдах байгууллага",
+      sourceQuote:
+        "8 дугаар зүйл.Агаарын тухай хуулийн 22 дугаар зүйлийн 22.3 дахь хэсгийн “төрийн байгууллага” гэсний дараа “болон орон нутгийн өөрөө удирдах байгууллага” гэж нэмсүгэй.",
     },
   ];
 }

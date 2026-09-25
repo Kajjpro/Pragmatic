@@ -1,17 +1,18 @@
 // scripts/test-comments.ts
-// groupComments ба writeReply-г туршина: 15 саналыг бүлэглээд, бүлэг бүрт хариу бичүүлнэ.
+// Саналын бүх урсгалыг туршина: шүүх (filterComments) → бүлэглэх (groupComments) → хариулах (writeReply).
 // Ажиллуулах: npx tsx --env-file=.env scripts/test-comments.ts
 
-import { groupComments } from "../lib/ai/comments";
+import { filterComments, groupComments, CommentInput } from "../lib/ai/comments";
 import { writeReply } from "../lib/ai/reply";
 
 // Саналууд аль заалтын талаар вэ (12.3-ын шинэ хувилбар)
 const CLAUSE_TEXT =
   "12.3.Агаарын бохирдлын талаарх иргэний гомдлыг холбогдох байгууллага 14 хоногийн дотор шийдвэрлэнэ.";
 
-// 15 жишээ санал. Санаагаар нь ойролцоогоор 5 бүлэг гарах ёстой:
-// хугацааг бүр богиносгох / дэмжих / байгууллагын хүчин чадал / онлайн, ил тод байдал / заалттай холбоогүй
-const COMMENTS = [
+// Жишээ саналууд (бидний өөрсдөө бичсэн ТУРШИЛТЫН санал).
+// c1–c15: жинхэнэ мэт санал. c12, c15 нь заалттай холбоогүй (OFF_TOPIC гарах ёстой).
+// t1–t5: шүүлтүүрийг шалгах зорилгоор тусгайлан бичсэн санал.
+const COMMENTS: CommentInput[] = [
   { id: "c1", text: "14 хоног ч гэсэн урт байна. Утаа өнөөдөр байхад 2 долоо хоногийн дараа хариу өгөөд ямар ч хэрэггүй. 3 хоногт шийдвэрлэдэг болгооч." },
   { id: "c2", text: "Маш зөв өөрчлөлт. 30 хоног хэтэрхий урт байсан." },
   { id: "c3", text: "Байгууллагууд одоо 30 хоногтоо ч амжихгүй байна. Хүн хүч, төсөв нэмэхгүй бол 14 хоног гэж бичсэн ч цаасан дээр л үлдэнэ." },
@@ -27,6 +28,12 @@ const COMMENTS = [
   { id: "c13", text: "Хөрш маань дугуй шатааж байхад 14 хоног хүлээх үү? Нэн даруй очиж шалгадаг болгоорой." },
   { id: "c14", text: "Утсаар залгахаар хэн ч авдаггүй. Гар утасны аппаар гомдол өгдөг болгох хэрэгтэй." },
   { id: "c15", text: "Нүүрсний үнийг хямдруулаач, өвөл халаалтын зардал их байна." },
+  // ── Шүүлтүүрийн туршилт ──
+  { id: "t1", text: "Та нар бүгд луйварчид, тэнэгүүд!!!" }, // ABUSIVE
+  { id: "t2", text: "Хямд зээл 5 минутад! Манай пэйж рүү ороорой www.zeel-hurdan.mn" }, // ABUSIVE (спам)
+  { id: "t3", text: "ааааа ыыыы 123" }, // ABUSIVE (утгагүй)
+  { id: "t4", text: "Маш зөв өөрчлөлт. 30 хоног хэтэрхий урт байсан." }, // DUPLICATE (c2-тэй яг ижил)
+  { id: "t5", text: "гомдлыг онлайнаар гаргаж хаана явааг нь хянах боломжтой болгооч!!" }, // DUPLICATE (c4, цэг таслал өөр)
 ];
 
 // id-аар саналын текстийг олох жижиг функц
@@ -48,22 +55,39 @@ function countWords(text: string): number {
 }
 
 async function main() {
-  console.log("AI_STUB =", process.env.AI_STUB || "(тохируулаагүй)");
+  console.log("AI_STUB =", process.env.AI_STUB || "(тохируулаагүй)", "| AI_PROVIDER =", process.env.AI_PROVIDER || "gemini");
   console.log("Заалт:", CLAUSE_TEXT);
   console.log("");
 
-  // 1. Саналуудыг бүлэглэнэ
-  const groups = await groupComments(CLAUSE_TEXT, COMMENTS);
+  // ── 1. ШҮҮХ ──
+  const labels = await filterComments(CLAUSE_TEXT, COMMENTS);
 
-  // 2. Бүх санал бүлэгт орсон эсэхийг тоолж шалгана
-  let total = 0;
-  for (const group of groups) {
-    total += group.commentIds.length;
+  const relevant: CommentInput[] = []; // бүлэглэлтэд орох саналууд
+  console.log("══ 1. ШҮҮЛТ");
+  for (const label of labels) {
+    if (label.status === "RELEVANT") {
+      relevant.push({ id: label.id, text: findText(label.id) });
+    } else {
+      // Шүүгдсэн саналыг шалтгаантай нь хэвлэнэ
+      console.log(`   [${label.id}] ${label.status} — ${label.reason}`);
+      console.log(`         "${findText(label.id)}"`);
+    }
   }
-  console.log(`${groups.length} бүлэг, бүлэгт орсон санал: ${total}/${COMMENTS.length}`);
+  const filteredCount = COMMENTS.length - relevant.length;
   console.log("");
 
-  // 3. Бүлэг бүрийг хэвлээд, хариу бичүүлнэ
+  // ── 2. БҮЛЭГЛЭХ (зөвхөн RELEVANT) ──
+  const groups = await groupComments(CLAUSE_TEXT, relevant);
+
+  let groupedCount = 0;
+  for (const group of groups) {
+    groupedCount += group.commentIds.length;
+  }
+  console.log(`══ 2. ТООЛУУР: ${COMMENTS.length} санал → ${filteredCount} шүүгдсэн → ${groups.length} бүлэг`);
+  console.log(`   Бүлэгт орсон: ${groupedCount}/${relevant.length} хамааралтай санал`);
+  console.log("");
+
+  // ── 3. Бүлэг бүрт ХАРИУ бичүүлнэ ──
   for (let i = 0; i < groups.length; i++) {
     const group = groups[i];
     console.log(`══ Бүлэг ${i + 1}: ${group.title} [${countWords(group.title)} үг] (${group.commentIds.length} санал)`);
@@ -78,7 +102,7 @@ async function main() {
     }
 
     // Эхний 3 саналыг жишээ болгож хариу бичүүлнэ.
-    // Gemini завгүй байж алдаа гарвал тэр бүлгийг алгасаад дараагийнх руу шилжинэ.
+    // AI алдаа гарвал тэр бүлгийг алгасаад дараагийнх руу шилжинэ.
     console.log("");
     try {
       const reply = await writeReply(CLAUSE_TEXT, {
@@ -88,7 +112,7 @@ async function main() {
       });
       console.log(`   ✉ Хариуны ноорог (${countWords(reply)} үг): ${reply}`);
     } catch {
-      console.log("   ✉ Хариу бичиж чадсангүй (Gemini алдаа).");
+      console.log("   ✉ Хариу бичиж чадсангүй (AI алдаа).");
     }
     console.log("");
   }

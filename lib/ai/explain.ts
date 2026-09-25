@@ -15,8 +15,8 @@ export type Explanation = {
 const NO_REASON = "Шалтгааныг төсөлд дурдаагүй.";
 
 export async function explainChange(
-  oldText: string, // хуучин заалт (ADD үед хоосон)
-  newText: string, // шинэ заалт (REMOVE үед хоосон)
+  oldTextInput: string | null, // хуучин заалт (ADD үед null эсвэл хоосон)
+  newTextInput: string | null, // шинэ заалт (REMOVE үед null эсвэл хоосон)
   reasonText: string // төслийн үндэслэл, танилцуулга (байхгүй бол хоосон)
 ): Promise<Explanation> {
   // 1. STUB горим: Gemini дуудахгүй, шууд хуурамч хариу
@@ -24,15 +24,19 @@ export async function explainChange(
     return fakeExplanation();
   }
 
-  // 2. Хуучин, шинэ хоёулаа хоосон бол тайлбарлах зүйл алга
+  // 2. null ирвэл хоосон текст болгоно
+  const oldText = oldTextInput || "";
+  const newText = newTextInput || "";
+
+  // 3. Хуучин, шинэ хоёулаа хоосон бол тайлбарлах зүйл алга
   if (oldText.trim() === "" && newText.trim() === "") {
     return { what: "", why: NO_REASON, who: "" };
   }
 
-  // 3. AI-аас асуух
+  // 4. AI-аас асуух
   const result = await askGeminiJSON(makePrompt(oldText, newText, reasonText));
 
-  // 4. AI объект буцаах ёстой. Үгүй бол хоосон тайлбар.
+  // 5. AI объект буцаах ёстой. Үгүй бол хоосон тайлбар.
   if (!result || typeof result !== "object") {
     console.log("explainChange: AI буруу хэлбэртэй хариу өгсөн:", result);
     return { what: "", why: NO_REASON, who: "" };
@@ -41,7 +45,7 @@ export async function explainChange(
   const what = getText(result.what);
   const who = getText(result.who);
 
-  // 5. "Яагаад" хэсгийг шалгана:
+  // 6. "Яагаад" хэсгийг шалгана:
   //    AI үндэслэлээс авсан өгүүлбэрээ (whyQuote) үг үсгээр нь өгөх ёстой.
   //    Тэр өгүүлбэр reasonText дотор үнэхээр байвал л AI-ийн "why"-г хүлээн авна.
   //    Үгүй бол AI өөрөө зохиосон байж магадгүй тул NO_REASON болгоно.
