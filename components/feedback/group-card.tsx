@@ -61,12 +61,12 @@ export function GroupCard({
         </span>
         {group.replyText ? (
           <span className="ml-auto text-[15px] font-bold text-ok-800">
-            ✓ Хадгалсан
+            Хадгалсан
           </span>
         ) : null}
       </header>
 
-      <h4 className="mt-3 text-[19px] font-extrabold leading-snug text-ink-950">
+      <h4 className="mt-3 text-[19px] font-bold leading-snug text-ink-950">
         {group.title}
       </h4>
       {group.summary ? (
@@ -88,7 +88,7 @@ export function GroupCard({
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-[15px]">
           {error ? (
-            <span className="font-semibold text-rose-700">{error}</span>
+            <span className="font-semibold text-bad-600">{error}</span>
           ) : (
             <span className="text-ink-600">
               AI ноорог засаад Тусгасан/Тусгаагүй сонго
@@ -101,10 +101,10 @@ export function GroupCard({
             onClick={() => save("NOT_REFLECTED")}
             disabled={busy}
             className={cn(
-              "press min-h-14 rounded-2xl px-6 text-[17px] font-extrabold ring-2 ring-inset disabled:opacity-60",
+              "press min-h-14 rounded-2xl px-6 text-[17px] font-bold ring-2 ring-inset disabled:opacity-60",
               group.reflection === "NOT_REFLECTED"
-                ? "bg-rose-600 text-white ring-rose-600"
-                : "bg-white text-rose-700 ring-rose-300 hover:bg-rose-50",
+                ? "bg-bad-600 text-white ring-bad-600"
+                : "bg-white text-bad-600 ring-bad-600/40 hover:bg-bad-50",
             )}
           >
             {saving === "NOT_REFLECTED" ? "Хадгалж байна…" : "Тусгаагүй"}
@@ -114,10 +114,10 @@ export function GroupCard({
             onClick={() => save("REFLECTED")}
             disabled={busy}
             className={cn(
-              "press min-h-14 rounded-2xl px-6 text-[17px] font-extrabold ring-2 ring-inset disabled:opacity-60",
+              "press min-h-14 rounded-2xl px-6 text-[17px] font-bold ring-2 ring-inset disabled:opacity-60",
               group.reflection === "REFLECTED"
-                ? "bg-emerald-600 text-white ring-emerald-600"
-                : "bg-white text-emerald-700 ring-emerald-300 hover:bg-emerald-50",
+                ? "bg-ok-700 text-white ring-ok-700"
+                : "bg-white text-ok-800 ring-ok-500 hover:bg-ok-50",
             )}
           >
             {saving === "REFLECTED" ? "Хадгалж байна…" : "Тусгасан"}

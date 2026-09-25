@@ -1,24 +1,27 @@
-import { cn } from "@/lib/cn";
+import { Minus, Pencil, Plus } from "lucide-react";
+import { Pill } from "@/components/ui/pill";
 import { changeTypeLabels } from "@/lib/labels";
 import type { ChangeType } from "@/lib/law/types";
 
-// Заалт нэмэгдсэн / хасагдсан / өөрчлөгдсөн эсэхийг өнгөөр харуулна.
-const styles: Record<ChangeType, string> = {
-  ADDED: "bg-emerald-100 text-emerald-800 ring-emerald-200",
-  REMOVED: "bg-rose-100 text-rose-800 ring-rose-200",
-  CHANGED: "bg-point-100 text-point-700 ring-point-300",
-  UNCHANGED: "bg-ink-100 text-ink-700 ring-ink-300",
-};
-
+// Заалт нэмсэн / хассан / өөрчилсөн эсэх (дүрс + текст, зөвхөн өнгө биш)
 export function ChangeBadge({ type }: { type: ChangeType }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11.5px] font-bold uppercase tracking-[0.05em] ring-1 ring-inset",
-        styles[type],
-      )}
-    >
-      {changeTypeLabels[type]}
-    </span>
-  );
+  if (type === "ADDED")
+    return (
+      <Pill tone="good">
+        <Plus aria-hidden className="h-3.5 w-3.5" /> {changeTypeLabels.ADDED}
+      </Pill>
+    );
+  if (type === "REMOVED")
+    return (
+      <Pill tone="bad">
+        <Minus aria-hidden className="h-3.5 w-3.5" /> {changeTypeLabels.REMOVED}
+      </Pill>
+    );
+  if (type === "CHANGED")
+    return (
+      <Pill tone="action">
+        <Pencil aria-hidden className="h-3.5 w-3.5" /> {changeTypeLabels.CHANGED}
+      </Pill>
+    );
+  return <Pill>{changeTypeLabels.UNCHANGED}</Pill>;
 }

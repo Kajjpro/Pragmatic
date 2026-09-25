@@ -1,7 +1,15 @@
+"use client";
+
+import { useState } from "react";
+import { cn } from "@/lib/cn";
 import type { WordPart } from "@/lib/law/types";
 import { DiffText } from "./diff-text";
 
-// Хоёр багана: Хүчин төгөлдөр | Төсөл. Утас дээр босоо.
+type View = "before" | "after" | "diff";
+
+// Нэг заалтын харьцуулалт.
+// Компьютерт: "Хүчин төгөлдөр хууль" | "Шинэ төсөл" хоёр багана зэрэгцэнэ.
+// Гар утсанд: "Өмнө | Дараа | Ялгаа" сонголт (анхдагч — Ялгаа, нэг мөрөнд).
 export function ClauseCompare({
   oldText,
   newText,
@@ -11,51 +19,62 @@ export function ClauseCompare({
   newText: string | null;
   diff: WordPart[];
 }) {
-  const oldOnly = diff.filter((p) => !p.added);
-  const newOnly = diff.filter((p) => !p.removed);
-  return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      <Column label="Хүчин төгөлдөр" muted={!oldText}>
-        {oldText ? (
-          <DiffText parts={oldOnly} />
-        ) : (
-          <Empty text="Шинээр нэмэгдсэн заалт" />
-        )}
-      </Column>
-      <Column label="Төсөл" muted={!newText}>
-        {newText ? (
-          <DiffText parts={newOnly} />
-        ) : (
-          <Empty text="Хасагдсан заалт" />
-        )}
-      </Column>
-    </div>
-  );
-}
+  const [view, setView] = useState<View>("diff");
+  const before = diff.filter((p) => !p.added);
+  const after = diff.filter((p) => !p.removed);
 
-function Column({
-  label,
-  children,
-  muted,
-}: {
-  label: string;
-  children: React.ReactNode;
-  muted?: boolean;
-}) {
+  const beforeBody = oldText ? <DiffText parts={before} /> : <Missing text="Одоогийн хуульд энэ заалт байхгүй (шинээр нэмэгдэнэ)." />;
+  const afterBody = newText ? <DiffText parts={after} /> : <Missing text="Энэ заалт хасагдана." />;
+
   return (
-    <div className="rounded-xl border border-ink-200 bg-white p-4">
-      <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-brand-700">
-        {label}
+    <div>
+      {/* Гар утасны сонголт */}
+      <div role="tablist" aria-label="Харьцуулалтын харагдац" className="mb-3 inline-flex rounded-md border border-line bg-surface-2 p-0.5 md:hidden">
+        {(
+          [
+            ["before", "Өмнө"],
+            ["after", "Дараа"],
+            ["diff", "Ялгаа"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={view === key}
+            onClick={() => setView(key)}
+            className={cn(
+              "min-h-9 rounded px-3.5 text-[14px] font-medium",
+              view === key ? "bg-surface text-heading shadow-soft" : "text-muted",
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-      <div className={muted ? "opacity-60" : ""}>{children}</div>
+
+      <div className="md:hidden">
+        {view === "before" ? beforeBody : view === "after" ? afterBody : <DiffText parts={diff} />}
+      </div>
+
+      {/* Компьютерийн хоёр багана */}
+      <div className="hidden gap-4 md:grid md:grid-cols-2">
+        <Column label="Хүчин төгөлдөр хууль">{beforeBody}</Column>
+        <Column label="Шинэ төсөл">{afterBody}</Column>
+      </div>
     </div>
   );
 }
 
-function Empty({ text }: { text: string }) {
+function Column({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-ink-300 bg-brand-50/60 p-4 text-center text-[14px] font-medium text-ink-600">
-      {text}
+    <div className="rounded-md border border-line bg-surface p-4">
+      <div className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-muted">{label}</div>
+      {children}
     </div>
   );
+}
+
+function Missing({ text }: { text: string }) {
+  return <p className="text-[15px] italic text-muted">{text}</p>;
 }

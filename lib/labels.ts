@@ -44,5 +44,5 @@ export const filterStatusLabels: Record<FilterStatus, string> = {
 // Санал хураалтын дүн. passed = дэмжсэн > эсэргүүцсэн.
 // Хууль "батлагдсан" гэж БҮҮ бич — зөвхөн санал хураалтын тоо.
 export function voteOutcomeLabel(passed: boolean): string {
-  return passed ? "Дэмжсэн нь олонх" : "Дэмжсэн нь олонх болоогүй";
+  return passed ? "Дэмжсэн нь олонх" : "Дэмжсэн нь цөөнх";
 }
