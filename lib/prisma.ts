@@ -1,8 +1,10 @@
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
+// Vercel (serverless): DATABASE_URL-д pooled холболт (жишээ нь Neon "-pooler", Supabase 6543 порт) өгнө.
+// Функц бүр цөөн холболт барина.
 const adapter = new PrismaPg(
-  { connectionString: process.env.DATABASE_URL },
+  { connectionString: process.env.DATABASE_URL, max: Number(process.env.DATABASE_POOL_MAX ?? 5) },
   process.env.DATABASE_SCHEMA ? { schema: process.env.DATABASE_SCHEMA } : undefined,
 );
 

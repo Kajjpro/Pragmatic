@@ -6,6 +6,9 @@ import { revealVoteEvent } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import { findRevealCounts } from "@/lib/vote-events";
 
+export const runtime = "nodejs";
+export const maxDuration = 30; // ParliamentAPI-аас дүн татна
+
 export const maxDuration = 60;
 
 // Ажилтан: санал хураалтын дүнг зарлаж, бүх таамгийг оноожуулна.
