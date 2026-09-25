@@ -5,14 +5,18 @@
 //   1. Демо төсөл (data/law.txt, bill.txt, reason.txt) → заалт бүрийн харьцуулалт + CHANGE картууд
 //   2. lawforum.parliament.mn-ийн өсвөр үеийнхэнд хамаатай төслүүд → BILL картууд
 //   3. Карт бүрт 3 асуулттай сорил
-//   4. Санал хураалтын таамаг (lib/parliament.ts бэлэн бол)
+//   4. Санал хураалтын таамаг: ParliamentAPI-аас эцсийн хэлэлцүүлгийн санал хураалттай асуудлууд (isReplay)
 //   5. data/comments.json → шүүх → бүлэглэх → хариуны ноорог
-//   6. data/precomputed.json + data/review.md (гараар хянах хүснэгт)
+//   6. data/precomputed.json + data/review.md (гараар хянах хүснэгт) + data/vote-events.json
+//      + data/accuracy.md (readAmendment-ийг гараар шалгах хүснэгт, байхгүй бол л үүсгэнэ)
+//   Нөөц: 2 карт, 1 таамаг precomputed.json-ийн backupCards / backupVoteEvents-д (сайтад харагдахгүй)
 //
 // Ажиллуулах: AI_CALL_DELAY_MS=1500 npx tsx --env-file=.env scripts/precompute.ts
 //   --max-bills=10    lawforum-аас хамгийн ихдээ хэдэн төсөл авах
 //   --no-lawforum     lawforum-ыг алгасах
 //   --out=хавтас      өөр хавтас руу бичих (AI_STUB=true үед заавал)
+//   --data=хавтас     оролтын файлууд өөр хавтаст байвал (анхдагч data)
+//   .env: PARLIAMENT_API_URL (санал хураалтын таамагт)
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -24,6 +28,7 @@ import { filterComments, groupComments } from "../lib/ai/comments";
 import { writeReply } from "../lib/ai/reply";
 import { makeVoteHook } from "../lib/ai/vote-hook";
 import { modelsUsed } from "../lib/ai/client";
+import { getAgendaList, getAgendaVoteList, finalReadingVote, type Agenda } from "../lib/parliament";
 import {
   optionsToText,
   validatePrecomputed,
@@ -34,11 +39,13 @@ import {
   type PrecomputedComment,
   type PrecomputedGroup,
   type PrecomputedQuiz,
+  type PrecomputedVoteEvent,
 } from "../lib/ai/precomputed";
 
 // ── Тохиргоо ──
 const args = process.argv.slice(2);
 const OUT_DIR = getArg("out") || "data";
+const DATA_DIR = getArg("data") || "data";
 const MAX_BILLS = Number(getArg("max-bills") || 10);
 const USE_LAWFORUM = !args.includes("--no-lawforum");
 const MAX_CHANGE_CARDS = 8;
@@ -46,6 +53,14 @@ const MIN_DESCRIPTION_LENGTH = 400; // үүнээс богино тайлбар�
 const MAX_DESCRIPTION_LENGTH = 5000; // AI-д хэт урт текст илгээхгүй
 const QUIZ_TRIES = 2;
 const DELAY_MS = Number(process.env.AI_CALL_DELAY_MS || 0);
+const MIN_CARDS = 12; // сайтад харагдах картын тоо: 12–18
+const MAX_CARDS = 18;
+const BACKUP_CARDS = 2; // нөөц карт
+const MAX_VOTE_EVENTS = 3; // сайтад харагдах таамаг
+const BACKUP_VOTE_EVENTS = 1; // нөөц таамаг
+const MAX_AGENDAS_TO_CHECK = 40; // ParliamentAPI-аас хэдэн асуудлын санал хураалтыг шалгах
+const MAX_AGENDA_TITLE_LENGTH = 120; // үүнээс урт нэр өсвөр үеийнхэнд ойлгомжгүй
+const DEFAULT_VOTE_HOOK = "Энэ төслийг УИХ дэмжих үү?"; // makeVoteHook бүтэхгүй үед
 
 // Өсвөр үеийнхэнд хамаатай сэдвийн түлхүүр үгс (төслийн нэрээр хайна)
 const TEEN_TOPICS = [
@@ -68,7 +83,7 @@ function pause() {
 }
 
 function readData(name: string): string {
-  return readFileSync(join("data", name), "utf8").trim();
+  return readFileSync(join(DATA_DIR, name), "utf8").trim();
 }
 
 // ════════════════════════════════════════════════
@@ -142,7 +157,7 @@ async function buildDemoBill(): Promise<{ bill: PrecomputedBill; built: BuiltCla
   const title = readData("title.txt");
   const reasonText = readData("reason.txt");
   // Демо төслийн lawforum хаяг (байвал) data/source.txt-д
-  const sourceUrl = existsSync("data/source.txt") ? readData("source.txt") : "";
+  const sourceUrl = existsSync(join(DATA_DIR, "source.txt")) ? readData("source.txt") : "";
 
   // a. Dev 1-ийн харьцуулалт: readAmendment → applyChanges → compareWords → explainChange
   const built = await buildClauses({
@@ -233,7 +248,7 @@ async function buildLawforumBills(): Promise<{ bills: PrecomputedBill[]; cards: 
 
   // c. Нэг нэгээр нь дэлгэрэнгүйг авч карт хийнэ
   for (const { project } of candidates) {
-    if (cards.length >= MAX_BILLS) {
+    if (cards.length >= MAX_BILLS + BACKUP_CARDS) {
       break;
     }
     const detail = await getProject(project.id);
@@ -316,21 +331,61 @@ function orderCards(cards: PrecomputedCard[]): PrecomputedCard[] {
 // 4. Санал хураалтын таамаг
 // ════════════════════════════════════════════════
 
-async function buildVoteEvents() {
+// Эцсийн хэлэлцүүлгээр санал хураагдсан, нэр нь ойлгомжтой асуудлуудаас таамаг хийнэ.
+// Бүгд өнгөрсөн санал хураалт тул isReplay: true ("Өмнө болсон санал хураалт — дахин тоглох").
+async function buildVoteEvents(bills: PrecomputedBill[]): Promise<PrecomputedVoteEvent[]> {
   console.log("\n══ 4. Санал хураалтын таамаг (ParliamentAPI)");
-  // Dev 1-ийн lib/parliament.ts-д getAgendaList, getAgendaVoteList хэрэгтэй.
-  // Файл одоогоор хоосон тул TypeScript import хийхгүй — замыг хувьсагчаар өгнө
-  const parliamentPath = "../lib/parliament";
-  const parliament = (await import(parliamentPath)) as Record<string, unknown>;
-  if (typeof parliament.getAgendaList !== "function" || typeof parliament.getAgendaVoteList !== "function") {
-    console.log("   ✗ lib/parliament.ts-д getAgendaList / getAgendaVoteList алга → алгаслаа");
-    return [];
+  const events: PrecomputedVoteEvent[] = [];
+
+  // a. Бүх асуудлын жагсаалт
+  let agendas: Agenda[] = [];
+  try {
+    agendas = await getAgendaList();
+  } catch (error) {
+    console.log("   ✗ ParliamentAPI-тай холбогдож чадсангүй, алгаслаа:", String(error).slice(0, 200));
+    return events;
   }
-  // Функцууд бэлэн болмогц тэдний буцаах хэлбэрийг харж энд гүйцээнэ (Dev 2).
-  // makeVoteHook(title, summary) → hook, isReplay: true.
-  console.log("   ⚠ lib/parliament.ts бэлэн болсон — энэ алхмыг гүйцээх хэрэгтэй (Dev 2)");
-  void makeVoteHook;
-  return [];
+
+  // b. Нэр нь богино, сэдэв нь өсвөр үеийнхэнд хамаатай асуудлууд түрүүнд
+  const candidates = agendas
+    .filter((a) => a.title !== "" && a.title.length <= MAX_AGENDA_TITLE_LENGTH)
+    .sort((a, b) => topicScore(b.title) - topicScore(a.title) || a.title.length - b.title.length)
+    .slice(0, MAX_AGENDAS_TO_CHECK);
+  console.log(`   ${agendas.length} асуудлаас ${candidates.length}-ийг шалгана`);
+
+  // c. Эцсийн хэлэлцүүлгийн санал хураалттайг нь сонгоно
+  for (const agenda of candidates) {
+    if (events.length >= MAX_VOTE_EVENTS + BACKUP_VOTE_EVENTS) {
+      break;
+    }
+    try {
+      const votes = await getAgendaVoteList(agenda.agendaCode);
+      if (finalReadingVote(votes) === null) {
+        continue; // эцсийн хэлэлцүүлгээр санал хураагаагүй
+      }
+    } catch (error) {
+      console.log(`   ⚠ ${agenda.agendaCode}: санал хураалт авч чадсангүй —`, String(error).slice(0, 120));
+      continue;
+    }
+
+    // d. Төвийг сахисан асуулт. Бүтэхгүй бол энгийн асуулт.
+    await pause();
+    const hook = (await makeVoteHook(agenda.title, findBillSummary(agenda.title, bills))) || DEFAULT_VOTE_HOOK;
+    events.push({ agendaCode: agenda.agendaCode, title: agenda.title, hook, isReplay: true });
+    console.log(`   ✓ ${agenda.agendaCode}: ${hook}`);
+  }
+  return events;
+}
+
+// Асуудлын нэртэй ижил нэртэй төсөл lawforum-аас олдвол түүний товч агуулгыг өгнө (hook илүү тодорхой болно)
+function findBillSummary(title: string, bills: PrecomputedBill[]): string {
+  const clean = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  for (const bill of bills) {
+    if (clean(bill.title) === clean(title)) {
+      return bill.summary;
+    }
+  }
+  return "";
 }
 
 // ════════════════════════════════════════════════
@@ -449,13 +504,19 @@ function makeReview(data: Precomputed): string {
   lines.push("- `options` мөрийн засвар: хариултуудыг ` ‖ `-ээр тусгаарлаж, зөвийг нь урд нь ✔ тавина. Жишээ: `8 цаг ‖ ✔12 цаг ‖ 40 цаг`");
   lines.push("- `personas` засвар: `STUDENT, WORKER` гэх мэт (STUDENT, DRIVER, WORKER, PARENT, ALL).");
   lines.push("- `delete` мөрийн засварт `тийм` гэж бичвэл карт устна. `order` = дараалал (1 = хамгийн түрүүнд).");
+  lines.push("- **Нөөц карт** (order 999) сайтад харагдахгүй. Ашиглах бол `order` мөрөнд 1–998 тоо бичнэ → cards руу шилжинэ.");
   lines.push("- ⚠ lawforum-ын хаягийг (`sourceUrl`) нэг удаа хөтөч дээр нээж шалгана уу.");
   lines.push("");
   lines.push(`Үүсгэсэн: ${data.generatedAt} · Загвар: ${data.model}`);
   lines.push("");
 
   const sortedCards = [...data.cards].sort((a, b) => a.order - b.order);
-  for (const card of sortedCards) {
+  const backupCards = data.backupCards || [];
+  for (const card of [...sortedCards, ...backupCards]) {
+    if (card === backupCards[0]) {
+      lines.push("# Нөөц картууд (сайтад харагдахгүй)");
+      lines.push("");
+    }
     const bill = data.bills.find((b) => b.key === card.projectKey);
     const source = card.before || card.after ? `Хуучин: ${card.before || "(байхгүй)"} → Шинэ: ${card.after || "(байхгүй)"}` : bill?.summary.slice(0, 300) + "…";
     lines.push(`## ${card.key} · ${card.emoji} ${cell(card.hook)}`);
@@ -478,6 +539,25 @@ function makeReview(data: Precomputed): string {
       lines.push(`| q${n}.explanation | ${cell(q.explanation)} |  |  |  |`);
     });
     lines.push(`| delete | үгүй |  |  |  |`);
+    lines.push("");
+  }
+
+  // Санал хураалтын таамаг
+  const events = [...data.voteEvents, ...(data.backupVoteEvents || [])];
+  if (events.length > 0) {
+    lines.push("## Санал хураалтын таамаг");
+    lines.push("");
+    lines.push("Бүгд өнгөрсөн санал хураалт (isReplay). `hook` нь төвийг сахисан, гишүүний нэргүй байх ёстой.");
+    lines.push("");
+  }
+  for (const event of events) {
+    const isBackup = !data.voteEvents.includes(event);
+    lines.push(`### vote-${event.agendaCode} · ${isBackup ? "НӨӨЦ · " : ""}${cell(event.title)}`);
+    lines.push("");
+    lines.push("| Талбар | Одоогийн | Зөв үү? (✅/❌) | Засвар |");
+    lines.push("|---|---|---|---|");
+    lines.push(`| hook | ${cell(event.hook)} (${event.hook.length}) |  |  |`);
+    lines.push(`| use | ${isBackup ? "үгүй" : "тийм"} |  |  |`);
     lines.push("");
   }
 
@@ -514,6 +594,37 @@ function makeReview(data: Precomputed): string {
 }
 
 // ════════════════════════════════════════════════
+// 7. data/accuracy.md — readAmendment-ийг гараар шалгах хүснэгт
+// ════════════════════════════════════════════════
+
+// Өөрчлөлт бүрийг төслийн ишлэлтэй нь жагсаана. Хүн төсөлтэй тулгаж ✅/❌ тавиад "Нийт"-ийг бөглөнө.
+// Гараар бөглөсөн файлыг дарж бичихгүйн тулд файл байхгүй үед л үүсгэнэ.
+function makeAccuracyTemplate(built: BuiltClause[]): string {
+  const changed = built.filter((c) => c.changeType !== "UNCHANGED");
+  const lines: string[] = [];
+  lines.push("# readAmendment-ийн нарийвчлал (гараар шалгана)");
+  lines.push("");
+  lines.push("`data/bill.txt`-ийг нээж, мөр бүрийн өөрчлөлт төсөлд яг ингэж бичигдсэн эсэхийг шалгаад ✅ эсвэл ❌ тавина.");
+  lines.push("Төсөлд байгаа боловч энд гараагүй өөрчлөлт байвал доор нэмж бичээд ❌ гэж тооцно.");
+  lines.push("");
+  lines.push("| Заалт | Төрөл | Төслийн ишлэл | Хуучин → Шинэ | Зөв үү? (✅/❌) | Тайлбар |");
+  lines.push("|---|---|---|---|---|---|");
+  for (const c of changed) {
+    const note = c.applyError ? "⚠ хуульд хэрэглэж чадаагүй" : "";
+    const change = `${cell(c.oldText || "(байхгүй)")} → ${cell(c.newText || "(хүчингүй)")}`;
+    lines.push(`| ${c.number} | ${c.changeType} | ${cell(c.sourceQuote)} | ${change} |  | ${note} |`);
+  }
+  lines.push("");
+  lines.push("Гараар нэмсэн (AI алдсан) өөрчлөлтүүд:");
+  lines.push("");
+  lines.push(`**Нийт: ___ / ___ зөв** (AI ${changed.length} өөрчлөлт олсон)`);
+  lines.push("");
+  lines.push("Шалгасан: ____ (нэр, огноо). Шалгаагүй бол энэ тоог питчид БҮҮ ХЭЛ.");
+  lines.push("");
+  return lines.join("\n");
+}
+
+// ════════════════════════════════════════════════
 // Гол дараалал
 // ════════════════════════════════════════════════
 
@@ -526,8 +637,18 @@ async function main() {
 
   const demo = await buildDemoBill();
   const lawforum = await buildLawforumBills();
-  const voteEvents = await buildVoteEvents();
+  const allVoteEvents = await buildVoteEvents(lawforum.bills);
   const { comments, groups } = await buildComments(demo.built);
+
+  // Картууд: эхний 12–18 нь сайтад, дараагийн 2 нь нөөц (сайтад харагдахгүй)
+  const allCards = orderCards([...demo.cards, ...lawforum.cards]);
+  const mainCount = Math.min(MAX_CARDS, Math.max(MIN_CARDS, allCards.length - BACKUP_CARDS));
+  const cards = allCards.slice(0, mainCount);
+  const backupCards = allCards.slice(mainCount, mainCount + BACKUP_CARDS).map((c) => ({ ...c, order: 999 }));
+
+  // Таамаг: эхний 3 нь сайтад, дараагийн 1 нь нөөц
+  const voteEvents = allVoteEvents.slice(0, MAX_VOTE_EVENTS);
+  const backupVoteEvents = allVoteEvents.slice(MAX_VOTE_EVENTS);
 
   let model = modelsUsed.join(", ");
   if (process.env.AI_STUB === "true") {
@@ -538,10 +659,12 @@ async function main() {
     generatedAt: new Date().toISOString(),
     model,
     bills: [demo.bill, ...lawforum.bills],
-    cards: orderCards([...demo.cards, ...lawforum.cards]),
+    cards,
     voteEvents,
     comments,
     groups,
+    backupCards,
+    backupVoteEvents,
   };
 
   // Бичих
@@ -550,10 +673,18 @@ async function main() {
   if (voteEvents.length > 0) {
     writeFileSync(join(OUT_DIR, "vote-events.json"), JSON.stringify(voteEvents, null, 2) + "\n");
   }
+  const accuracyFile = join(OUT_DIR, "accuracy.md");
+  if (!existsSync(accuracyFile)) {
+    writeFileSync(accuracyFile, makeAccuracyTemplate(demo.built));
+  }
 
   // Шалгах
   console.log("\n══ Дүн");
   console.log(`   ${data.bills.length} төсөл, ${data.cards.length} карт, ${data.voteEvents.length} таамаг, ${comments.length} санал, ${groups.length} бүлэг`);
+  console.log(`   Нөөц: ${backupCards.length} карт, ${backupVoteEvents.length} таамаг (сайтад харагдахгүй)`);
+  if (voteEvents.length < 2) {
+    console.log(`   ⚠ ${voteEvents.length} таамаг (зорилго 2–3)`);
+  }
   console.log(`   Загвар: ${model || "(AI дуудагдаагүй)"}`);
   if (data.cards.length < 12 || data.cards.length > 18) {
     console.log(`   ⚠ ${data.cards.length} карт (зорилго 12–18)`);
@@ -562,7 +693,7 @@ async function main() {
   for (const problem of problems) {
     console.log(`   ✗ ${problem}`);
   }
-  console.log(`   → ${join(OUT_DIR, "precomputed.json")}, ${join(OUT_DIR, "review.md")}`);
+  console.log(`   → ${join(OUT_DIR, "precomputed.json")}, ${join(OUT_DIR, "review.md")}, ${accuracyFile}`);
   if (problems.length > 0) {
     process.exit(1);
   }

@@ -89,6 +89,10 @@ export type Precomputed = {
   voteEvents: PrecomputedVoteEvent[];
   comments: PrecomputedComment[];
   groups: PrecomputedGroup[];
+  // Нөөц: Dev 1-ийн seed эдгээрийг УНШДАГГҮЙ тул сайтад харагдахгүй.
+  // Тайзан дээр карт буруу байвал review.md-ээр нөөцийг cards руу шилжүүлж, seed дахин ажиллуулна.
+  backupCards?: PrecomputedCard[];
+  backupVoteEvents?: PrecomputedVoteEvent[];
 };
 
 const PERSONAS = ["STUDENT", "DRIVER", "WORKER", "PARENT", "ALL"];
@@ -102,7 +106,8 @@ export function validatePrecomputed(data: Precomputed): string[] {
   const billKeys = data.bills.map((b) => b.key);
   const cardKeys: string[] = [];
 
-  for (const card of data.cards) {
+  // Нөөц картуудыг ч мөн адил шалгана (тайзан дээр ашиглаж магадгүй)
+  for (const card of [...data.cards, ...(data.backupCards || [])]) {
     const name = `карт ${card.key}`;
 
     // 1. Түлхүүр давхардаагүй, төсөл нь байгаа
@@ -153,7 +158,7 @@ export function validatePrecomputed(data: Precomputed): string[] {
   }
 
   // 4. Санал хураалтын асуулт
-  for (const event of data.voteEvents) {
+  for (const event of [...data.voteEvents, ...(data.backupVoteEvents || [])]) {
     if (event.hook.trim() === "" || event.agendaCode.trim() === "") {
       problems.push(`санал хураалт ${event.agendaCode}: hook эсвэл agendaCode хоосон`);
     }
