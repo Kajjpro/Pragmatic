@@ -43,8 +43,8 @@ function Column({
   muted?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-ink-100 bg-white p-3.5">
-      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-parliament-500">
+    <div className="rounded-xl border border-ink-200 bg-white p-4">
+      <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-brand-700">
         {label}
       </div>
       <div className={muted ? "opacity-60" : ""}>{children}</div>
@@ -54,7 +54,7 @@ function Column({
 
 function Empty({ text }: { text: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-ink-200 bg-parliament-50/40 p-3 text-center text-[12px] text-ink-500">
+    <div className="rounded-lg border border-dashed border-ink-300 bg-brand-50/60 p-4 text-center text-[14px] font-medium text-ink-600">
       {text}
     </div>
   );

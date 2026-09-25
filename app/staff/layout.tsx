@@ -14,12 +14,12 @@ export default async function StaffLayout({ children }: LayoutProps<"/staff">) {
   if (user.role !== "STAFF") {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-6 py-20 text-center">
-        <p className="text-[15px] font-semibold text-parliament-900">
+        <p className="text-[17px] font-bold text-parliament-900">
           Энэ хэсэг зөвхөн УИХТГ-ын ажилтанд нээлттэй.
         </p>
         <Link
           href="/"
-          className="rounded-full bg-parliament-700 px-4 py-2 text-[12.5px] font-semibold text-white transition hover:bg-parliament-800"
+          className="press inline-flex min-h-12 items-center rounded-full bg-gold-400 px-5 text-[15px] font-bold text-parliament-950 shadow-sm hover:bg-gold-300"
         >
           Нүүр хуудас руу буцах
         </Link>
@@ -34,24 +34,25 @@ export default async function StaffLayout({ children }: LayoutProps<"/staff">) {
 
   return (
     <div className="flex min-h-full flex-col bg-parliament-50/30">
-      <div className="border-b border-ink-100 bg-white">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
+      <div className="chrome-navy relative text-white">
+        <div className="grain" aria-hidden />
+        <div className="relative mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-5 sm:px-6">
           <div>
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-parliament-500">
+            <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-gold-400">
               Ажилтны булан
             </div>
-            <h1 className="text-lg font-bold text-parliament-900">
+            <h1 className="mt-0.5 text-[20px] font-bold text-white sm:text-[22px]">
               УИХ Тамгын газар · Дотоод ажлын самбар
             </h1>
           </div>
-          <div className="hidden items-center gap-2 rounded-full bg-parliament-50 px-3 py-1.5 text-[11.5px] font-semibold text-parliament-800 md:flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <div className="hidden items-center gap-2 rounded-full bg-white/10 px-3.5 py-2 text-[13px] font-semibold text-white ring-1 ring-white/20 md:flex">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
             Онлайн · {today}
           </div>
         </div>
       </div>
       <StaffNav />
-      <div className="mx-auto w-full max-w-[1400px] flex-1 px-6 py-6">
+      <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6">
         {children}
       </div>
     </div>

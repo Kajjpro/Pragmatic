@@ -10,11 +10,11 @@ export function ChangeExplain({
 }) {
   if (!what && !why && !who) return null;
   return (
-    <div className="rounded-xl bg-parliament-50/60 p-4">
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-parliament-500">
+    <div className="rounded-xl border-l-4 border-brand-700 bg-brand-50 p-4">
+      <div className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.12em] text-brand-700">
         Энгийн тайлбар
       </div>
-      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-[80px_1fr]">
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-[130px_1fr]">
         {what ? (
           <Row label="Юу өөрчлөгдсөн" value={what} />
         ) : null}
@@ -28,8 +28,8 @@ export function ChangeExplain({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <>
-      <dt className="text-[11px] font-semibold text-parliament-700">{label}</dt>
-      <dd className="text-[12.5px] leading-relaxed text-ink-900">{value}</dd>
+      <dt className="text-[13px] font-bold text-brand-700">{label}</dt>
+      <dd className="text-[15px] leading-relaxed text-ink-900">{value}</dd>
     </>
   );
 }

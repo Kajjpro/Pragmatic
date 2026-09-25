@@ -12,7 +12,7 @@ export function DiffText({
   return (
     <p
       className={cn(
-        "whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink-900",
+        "whitespace-pre-wrap text-[15px] leading-[1.7] text-ink-900",
         className,
       )}
     >
@@ -21,7 +21,7 @@ export function DiffText({
           return (
             <mark
               key={i}
-              className="rounded bg-emerald-100 px-0.5 text-emerald-900"
+              className="rounded bg-emerald-100 px-1 font-semibold text-emerald-900 ring-1 ring-emerald-300"
             >
               {p.value}
             </mark>
@@ -30,7 +30,7 @@ export function DiffText({
           return (
             <mark
               key={i}
-              className="rounded bg-rose-100 px-0.5 text-rose-900 line-through"
+              className="rounded bg-rose-100 px-1 text-rose-900 line-through ring-1 ring-rose-300"
             >
               {p.value}
             </mark>

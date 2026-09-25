@@ -14,7 +14,7 @@ const styles: Record<ReflectionValue, { icon: string; className: string }> = {
   },
   PENDING: {
     icon: "⏳",
-    className: "bg-gold-100 text-gold-500 ring-gold-300",
+    className: "bg-point-100 text-point-700 ring-point-300",
   },
 };
 
@@ -29,12 +29,12 @@ export function ReflectionBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-bold ring-1 ring-inset",
         s.className,
         className,
       )}
     >
-      <span className="text-[10px]">{s.icon}</span>
+      <span className="text-[11px]">{s.icon}</span>
       {reflectionLabels[value]}
     </span>
   );
