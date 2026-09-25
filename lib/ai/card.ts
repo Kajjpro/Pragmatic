@@ -31,6 +31,7 @@ export type Card = {
   hook: string; // ≤ 60 тэмдэгт, сонирхол татах үнэн баримт эсвэл асуулт
   youMeaning: string; // ≤ 2 өгүүлбэр, "чи"-гээр хандсан, өдөр тутмын жишээтэй
   personas: Persona[]; // хэнд хамаатай
+  sourceQuote?: string; // картыг батлах ишлэл (оролтын текстээс үг үсгээрээ) — хянахад хэрэгтэй
 };
 
 const PERSONAS: Persona[] = ["STUDENT", "DRIVER", "WORKER", "PARENT", "ALL"];
@@ -131,7 +132,7 @@ export function checkCard(answer: unknown, sourceText: string): { card: Card | n
   // 7. emoji буруу бол анхдагч emoji тавина (үүнээс болж картыг хаяхгүй)
   const emoji = readEmoji(result.emoji);
 
-  return { card: { emoji, hook, youMeaning, personas }, problem: "" };
+  return { card: { emoji, hook, youMeaning, personas, sourceQuote: quote }, problem: "" };
 }
 
 // ── Туслах функцууд ──
