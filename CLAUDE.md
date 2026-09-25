@@ -1,211 +1,105 @@
-@AGENTS.md
+Хариу v2 — Залуучуудыг УИХ-тай өдөр бүр холбох платформ
+Товчхондоо: Бид 12-р ангийн сурагчид. Хакатонд бүртгүүлэх хүртлээ УИХ-ын платформ байдгийг мэдээгүй. Хэрэгсэл хийхэд хялбар — хэрэглэгч олоход хэцүү. Бусад баг хэрэгсэл хийж байна; бид тэр хэрэгслийг ашиглах хүмүүсийг бий болгоно. Хуулийг 60 секундийн карт, таамгийн тоглоом, бодит нөлөөний тэмдгээр залуучуудын өдөр тутмын дадал болгоно. Өмнө хийсэн харьцуулалт, санал бүлэглэх AI нь ард нь хөдөлгүүр болж ажиллана.
+Final pitch: tomorrow 10:00. Feature freeze: 06:00. This is the production version — every screen a judge sees must be polished.
+The one-line pitch
+"Хууль 60 секундэд. Таамагла. Өөрчил." — Parliament becomes a daily habit for young Mongolians, and their voice reaches parliament staff organised.
+The habit loop (this is the product)
+① Өнөөдрийн хууль (understand) → ② Таамаг (predict the vote) → ⑥ Би хууль өөрчилсөн (real impact)
+60-sec cards + quiz + streak points when the real vote happens comment reflected → badge → share
+↑ │
+└──────────────────────────── friends see the share, join ─────────────────────┘
 
-# Хариу — Open Parliament Hackathon (shared team file)
+Judge journey (build in this order of impression)
+Hook — landing page / (first 10 seconds): full-screen, bold, one question: "Та УИХ-ыг хэдэн настайдаа анх мэдсэн бэ?" then our honest story ("Бид 17 настай. Өчигдөр л мэдсэн.") and one big button "60 секундэд нэг хууль →". A live phone mockup shows a card swiping.
+Discover — /feed: pick "Би хэн бэ?" (Сурагч / Жолооч / Ажил хийдэг / Эцэг эх) → swipe cards → quiz → streak/points animate.
+Play — /predict: predict a vote → reveal with animation → points.
+Impact — /me + /b/[id]: "✅ Таны санал тусгагдлаа" → badge "Хууль өөрчилсөн иргэн" → shareable image.
+Engine — /staff (30 seconds in the pitch): the comparison + filtered/grouped comments + reply that makes ⑥ possible. Shows we are not "just a citizen app".
+Features
+① Өнөөдрийн хууль — 60-second law cards
+Problem: Young people don't know parliament or even basic laws (tax law) — and don't know that they don't know (MP mentors). Laws are long and written in legal language. Solution: Swipeable cards (Stories/TikTok style). One card = one bill or one change: hook title → "Одоо / Болох нь" → "Чамд юу гэсэн үг вэ" → 3-question quiz. Persona filter. Daily streak. Reuses: comparison data (before/after), explainChange → teen version.
+② Таамаг — vote prediction game
+Problem: Nobody follows what parliament does; there is no reason to come back. Solution: Before/around a vote: "Батлагдах уу?" (Yes/No) + "Хэдэн гишүүн дэмжих вэ?" (slider). When the real result arrives (ParliamentAPI getAgendaVoteList), reveal with animation and award points.
+Replay events (past votes) are allowed for the demo but must be clearly labelled "Өмнө болсон санал хураалт — дахин тоглох".
+Neutrality: never rank, praise or criticise MPs or parties. Only pass/fail and counts. No "which MP is like you".
+⑥ Би хууль өөрчилсөн — real impact badge
+Problem: Citizens comment but never learn if it mattered. Solution: Existing loop: comment → AI filter (off-topic/abusive/duplicate, never deleted) → AI groups → staff reply → "Тусгасан". When reflected: notification, +50 points, badge "Хууль өөрчилсөн иргэн", public badge page /b/[id] with a share image (Open Graph). Reuses: filterComments, groupComments, writeReply, staff reply flow.
+Out of scope (pitch slide "Дараагийн шат" only)
+School league (Сургуулийн лиг) — show as a mockup image in the pitch, do not build. No report checker, no numbering/spelling check, no chatbot, no leaderboard pages beyond what's listed.
+Architecture
+Next.js App Router (TS), Tailwind, framer-motion for animations, Prisma 7 + PostgreSQL, Clerk (Google sign-in), Gemini via lib/ai/client.ts (model chain in .env), diff, next/og for share images.
+Browsing is public. Login only to save progress (points, streak, predictions, comments). Never block the first card behind login.
+All AI output is precomputed by scripts/seed.ts and stored in the DB. No AI call ever happens on page load or during the demo.
+Data model (Dev 1 owns prisma/schema.prisma)
+Keep (existing): User, Project (= Law/Bill), Clause, Submission (= Comment, with filterStatus/filterReason/restored), Cluster (= Group), Reply, Notification. Delete: Report, ReportRow, Flag, Directive, Follow, old VoteResult and their enums. Add:
+User.persona enum STUDENT | DRIVER | WORKER | PARENT | ALL (default ALL), User.points Int @default(0), User.streak Int @default(0), User.lastActiveDate DateTime?
+Card: id, projectId?, clauseId?, kind BILL | CHANGE, emoji, hook (≤ 60 chars), before?, after?, youMeaning (teen explanation), personas Persona[], sourceUrl, order, publishedAt
+QuizQuestion: id, cardId, question, options Json (string[3–4]), correctIndex, explanation
+CardView: userId, cardId, day (date) — unique(userId, cardId, day)
+QuizAnswer: userId, questionId, chosenIndex, correct — unique(userId, questionId)
+VoteEvent: id, projectId?, agendaCode, title, hook, isReplay Boolean, status OPEN | REVEALED, closesAt?, actualSupport?, actualOppose?, actualTotal?, passed?, revealedAt?
+Prediction: userId, voteEventId, willPass Boolean, supportGuess Int, points Int @default(0) — unique(userId, voteEventId)
+Badge: id, userId, type LAW_CHANGER | STREAK_7 | FIRST_PREDICTION, submissionId?, createdAt
+Points (Dev 1 implements in lib/points.ts, one place only)
+Action
+Points
+First view of a card today
++1
+Correct quiz answer (first try only)
++3
+Prediction pass/fail correct
++10
+Prediction support count within ±3 / ±8 / ±15
++10 / +5 / +2
+Comment labelled RELEVANT
++2
+Comment reflected (Тусгасан)
++50 + LAW_CHANGER badge
+Streak: +1 when the user views ≥1 card on a new consecutive day; reset if a day is missed.
 
-> Товчхондоо: Иргэн ба ажилтан нэг хананы хоёр талд зогсож байна — тэр хана бол ойлгоход хэцүү хуулийн төсөл. "Хариу" нь 3 алхамтай нэг урсгал: **Ойлгох → Сонсох → Хариулах.** (1) Хуулийн өөрчлөлтийг заалт бүрээр автоматаар харьцуулж, иргэнд энгийнээр тайлбарлана. (2) Иргэдийн саналаас хамааралгүйг шүүж, үлдсэнийг бүлэглэнэ. (3) Ажилтан хариулж, иргэн санал нь тусгагдсан эсэхийг харна. Жижиг нэмэлт функц хийхгүй. Маргааш 10:00-д питч (`PITCH.md`).
-
-The final pitch script is in `PITCH.md`.
-Each dev also has a personal file: `DEV1-BACKEND.md`, `DEV2-AI.md` (AI + demo data), `DEV3-FRONTEND.md` (frontend + pitch).
-When starting Claude Code, say: "Read CLAUDE.md and DEV1-BACKEND.md (or DEV2-AI.md / DEV3-FRONTEND.md), then ..."
-
-## Context
-
-- Open Parliament Hackathon (Mongolian Parliament Secretariat / УИХТГ, The Asia Foundation, Unread).
-- **Final presentation: tomorrow 10:00.** Quality over quantity.
-- Mentors (parliament staff): most teams focus on citizens; we win by reducing staff's manual paper work (93.9% of the legislative process is paper-based).
-
-## Cohesion — one story
-
-Citizens and staff stand on two sides of the same wall: a bill that is hard to understand.
-Once the machine understands a bill's changes, both sides benefit. **"Нэг ажил, хоёр ашиг."**
-
-| Step                       | Staff                                              | Citizen                                          |
-| -------------------------- | -------------------------------------------------- | ------------------------------------------------ |
-| **1. Ойлгох (Understand)** | Automatic clause-by-clause comparison, Word export | Same changes explained plainly: what / why / who |
-| **2. Сонсох (Listen)**     | AI filters irrelevant comments, groups the rest    | Their comment reaches staff organised            |
-| **3. Хариулах (Respond)**  | One reply per group, mark "Тусгасан / Тусгаагүй"   | "✅ Таны санал тусгагдлаа"                       |
-
-Problems from mentors (3 MPs + drafting consultant):
-
-- Young people don't know the parliament or even basic laws (e.g. tax law) — and don't know that they don't know. → Step 1 (plain explanation). No new feature.
-- Public comments contain many irrelevant / unnecessary words and ideas; staff delete them **by hand**. → Step 2 (filter).
-- A consultant handles 8–10 bills and compares every word by hand. → Step 1.
-- Citizens never learn if their comment was reflected. → Step 3.
-
-## The 2 core features (nothing else)
-
-### Feature 1 — Law amendment comparison (Хуулийн өөрчлөлтийн харьцуулалт)
-
-**Problem:** A drafting consultant handles 8–10 bills at once. For every amendment bill they compare each clause with the current law **by hand**, even single-word changes (3.1 "хариуцлагатай **байна**" → "хариуцлагатай **байж болно**"), then prepare a comparison table for MPs.
-**Solution:** Staff enters current law + amendment bill → system shows clause-by-clause comparison with every changed word highlighted → staff approves → exports a Word comparison table.
-**Same data, two views:** staff (precise, source quotes, approve, Word) and citizen (same comparison + plain what / why / who explanation).
-
-### Feature 2 — "Was my comment reflected?" (Миний санал тусгагдсан уу?)
-
-**Problem:** Citizens comment on bills but never get a reply or learn if anything changed.
-**Solution:** Citizen comments on a clause → AI **filters** irrelevant comments (never deletes — staff can restore) → AI groups the relevant ones → staff replies per group and marks "Тусгасан / Тусгаагүй" → citizen sees the result next to the clause's before/after.
-**Extra problem solved:** staff currently delete off-topic / abusive / duplicate comments by hand.
-
-### Out of scope (do NOT build)
-
-Report checker, numbering check, spelling check, ParliamentAPI, notifications, dashboards with charts, chatbots, auto-fetch from legalinfo.mn (demo law text is loaded manually).
-
-## Pipeline
-
-```
-Feature 1:
-  Current law ──→ splitIntoClauses ──┐
-                                     ├──→ applyChanges ──→ compareWords ──→ staff screen (highlighted)
-  Amendment bill ──→ readAmendment ──┘                         │
-                                                               ├──→ explainChange ──→ citizen screen
-                                                               └──→ makeWordFile ──→ Word for MPs
-Feature 2:
-  Citizen comments ──→ filterComments ──→ groupComments ──→ writeReply ──→ staff approves ──→ citizen sees result
-                           └──→ "Шүүгдсэн" list (staff can restore)
-```
-
-All AI runs when the bill is created or when staff clicks a button, and is saved to the DB. **Never call AI on page load.**
-
-## Function names (fixed — do not rename)
-
-| Function           | Type | Owner | Plain meaning                                                                    |
-| ------------------ | ---- | ----- | -------------------------------------------------------------------------------- |
-| `splitIntoClauses` | code | Dev 1 | Хуваах — split law text into clauses                                             |
-| `readAmendment`    | AI   | Dev 2 | Ойлгох — turn amendment instructions into a change list                          |
-| `applyChanges`     | code | Dev 1 | Засах — apply the change list to the old clauses                                 |
-| `compareWords`     | code | Dev 1 | Харьцуулах — word-level diff                                                     |
-| `explainChange`    | AI   | Dev 2 | Тайлбарлах — what / why / who in plain Mongolian                                 |
-| `makeWordFile`     | code | Dev 1 | Хэвлэх — Word comparison table                                                   |
-| `filterComments`   | AI   | Dev 2 | Шүүх — label comments RELEVANT / OFF_TOPIC / ABUSIVE / DUPLICATE (never deletes) |
-| `groupComments`    | AI   | Dev 2 | Бүлэглэх — group similar comments (only RELEVANT)                                |
-| `writeReply`       | AI   | Dev 2 | Хариулах — draft staff reply for a group                                         |
-
-## Shared types (backend ↔ frontend contract)
-
-```ts
-type Stage =
-  | "DISCUSS_DECISION"
-  | "FIRST_READING"
-  | "FINAL_READING"
-  | "FINAL_APPROVAL";
-// Хэлэлцэх эсэх | Анхны хэлэлцүүлэг | Эцсийн хэлэлцүүлэг | Эцэслэн батлах
-
-type ChangeType = "ADDED" | "REMOVED" | "CHANGED" | "UNCHANGED";
-type Reflection = "PENDING" | "REFLECTED" | "NOT_REFLECTED"; // Хүлээгдэж буй | Тусгасан | Тусгаагүй
-
-type WordPart = { value: string; added?: boolean; removed?: boolean }; // from the `diff` package
-type FilterStatus = "RELEVANT" | "OFF_TOPIC" | "ABUSIVE" | "DUPLICATE";
-// Хамааралтай | Сэдвээс гадуур | Утгагүй/доромжилсон | Давхардсан
-
-type FilteredCommentView = {
-  id: string;
-  text: string;
-  filterStatus: FilterStatus;
-  filterReason: string;
-};
-
-type BillSummary = {
-  id: string;
-  title: string;
-  stage: Stage;
-  changedCount: number;
-  unapprovedCount: number;
-  commentCount: number;
-  unansweredGroupCount: number;
-  filteredCount: number;
-};
-
-type GroupView = {
-  id: string;
-  title: string;
-  summary: string;
-  commentCount: number;
-  replyDraft: string | null;
-  replyText: string | null;
-  reflection: Reflection;
-};
-
-type ClauseView = {
-  id: string;
-  number: string;
-  oldText: string | null;
-  newText: string | null;
-  changeType: ChangeType;
-  diff: WordPart[];
-  sourceQuote: string | null; // exact sentence from the bill
-  what: string | null;
-  why: string | null;
-  who: string | null;
-  approved: boolean;
-  groups: GroupView[];
-  filtered: FilteredCommentView[]; // staff only; empty for citizens
-};
-
-type BillDetail = {
-  id: string;
-  title: string;
-  stage: Stage;
-  reasonText: string | null;
-  clauses: ClauseView[];
-};
-```
-
-## API (Dev 1 builds, Dev 3 uses)
-
-| Route                             | Who     | Does                                                                                                             |
-| --------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------- |
-| `GET /api/bills`                  | all     | `BillSummary[]`                                                                                                  |
-| `GET /api/bills/[id]`             | all     | `BillDetail`                                                                                                     |
-| `POST /api/bills`                 | staff   | `{ title, stage, currentLawText, amendmentText, reasonText }` → runs Feature 1 pipeline, returns `{ id }`        |
-| `POST /api/clauses/[id]/approve`  | staff   | marks clause approved                                                                                            |
-| `GET /api/bills/[id]/word`        | staff   | downloads .docx                                                                                                  |
-| `POST /api/comments`              | citizen | `{ clauseId, text }`                                                                                             |
-| `GET /api/me/comments`            | citizen | my comments + group + reply + reflection + clause before/after                                                   |
-| `POST /api/bills/[id]/group`      | staff   | runs `filterComments` → `groupComments` (RELEVANT only) → `writeReply` drafts, for all clauses with new comments |
-| `POST /api/comments/[id]/restore` | staff   | sets a filtered comment back to RELEVANT (it joins the next grouping)                                            |
-| `POST /api/groups/[id]/reply`     | staff   | `{ replyText, reflection }`                                                                                      |
-
-Errors: `{ error: "монгол текст" }` with proper HTTP status.
-
-## Stack
-
-Next.js (App Router, TS), Tailwind, Prisma 7 (`provider = "prisma-client"`, output `app/generated/prisma`), PostgreSQL, Clerk (CITIZEN / STAFF via `STAFF_EMAILS`), Gemini via `@google/genai` (model from `GEMINI_MODEL`, currently `gemini-3.8-flash`), `diff`, `docx`.
-
-## Code style (everyone)
-
-- **Simple, readable, beginner-friendly.** Every teammate must understand every line.
-- Short functions, clear names, comments in Mongolian for each step.
-- No clever abstractions, no unnecessary libraries.
-- All UI text in Mongolian.
-
-## File ownership
-
-- Dev 1: `prisma/`, `lib/*.ts` (non-AI), `app/api/**`, `scripts/seed.ts`
-- Dev 2: `lib/ai/**`, `scripts/test-*.ts`, `scripts/import-comments.ts`, `data/`
-- Dev 3: `app/**/page.tsx`, `app/**/layout.tsx` (except staff guard), `components/**`, `pitch/`
-  Do not edit other people's files without telling them.
-
-## Timeline (hours from start)
-
-| Hour  | Checkpoint                                                             |
-| ----- | ---------------------------------------------------------------------- |
-| 0–0.5 | Together: pick demo law, agree on this file                            |
-| 4     | ✅ **CP1:** entering the bill shows a correct highlighted comparison   |
-| 8     | ✅ **CP2:** comment → filter → group → reply → citizen sees "Тусгасан" |
-| 8–11  | Sleep in shifts (3h each)                                              |
-| 13    | ✅ **Feature freeze.** Only bug fixes, rehearsal                       |
-
-**Fallback at CP1:** if `readAmendment` + `applyChanges` are unreliable, switch to: AI returns old/new text per clause directly, `compareWords` only highlights.
-
-## Demo safety
-
-- AI providers can be overloaded (Gemini returned 503s during development). **All AI results are precomputed with `scripts/seed.ts` and saved to the DB before the demo.** The demo never waits on a live AI call.
-- `lib/ai/client.ts` has a fallback: Gemini → Claude on 429/503 (see DEV2-AI.md).
-- Keep a screen recording of the full demo as backup.
-
-## Quality bar
-
-- Real law, real bill, real comments. No fake-looking data.
-- Every changed word highlighted correctly.
-- No placeholder text, no dead buttons, everything Mongolian.
-- Citizen pages look good on a phone.
+API (Dev 1 builds, Dev 3 uses)
+Public:
+GET /api/feed?persona=STUDENT → cards with quiz (no correctIndex!), ordered
+GET /api/vote-events → open + revealed events (actual numbers only when REVEALED)
+GET /api/badges/[id] → public badge data; GET /api/badges/[id]/image → OG image (next/og)
+existing GET /api/bills, GET /api/bills/[id] Logged in:
+GET /api/me → { name, persona, points, streak, badges, predictions, comments with group/reply/reflection }
+POST /api/me/persona { persona }
+POST /api/cards/[id]/view
+POST /api/quiz/[id]/answer { chosenIndex } → { correct, correctIndex, explanation, pointsAwarded }
+POST /api/vote-events/[id]/predict { willPass, supportGuess }
+existing POST /api/comments Staff:
+existing bills / group / reply routes (reply with REFLECTED awards points + badge + notification)
+POST /api/staff/vote-events/sync (ParliamentAPI → VoteEvent)
+POST /api/staff/vote-events/[id]/reveal (fetch result, set REVEALED, score all predictions)
+Errors: { error: "монгол текст" } + proper status.
+AI functions (Dev 2 owns lib/ai/)
+Keep: client.ts, check.ts, readAmendment, explainChange, filterComments, groupComments, writeReply. Add:
+makeCard(input) → { emoji, hook, youMeaning, personas } — teen-friendly, ≤ 60-char hook, youMeaning ≤ 2 short sentences, second person ("чи"), no slang that sounds fake, neutral.
+makeQuiz(cardText) → 3 questions × 3–4 options, one correct, short explanation; answers must be supported by the card text.
+makeVoteHook(title, summary) → one neutral, curious question for the prediction card. Rules: only client.ts talks to the AI; stub mode (AI_STUB=true); no fabrication (answers/claims must be in the source text); plain Mongolian; neutral; wrong shape → empty.
+Ownership (to avoid conflicts)
+Dev 1: prisma/, lib/_.ts (non-AI: points, db, auth, parliament, lawforum, law/_), app/api/**, scripts/seed.ts, deploy.
+Dev 2 (Kajusi): lib/ai/**, scripts/test-\*.ts, scripts/precompute.ts, data/**.
+Dev 3: app/**/page.tsx, app/**/layout.tsx, components/**, public/**, pitch/**. Tell the team in chat before touching someone else's file. Small commits, pull often.
+Design system (Dev 3)
+Mobile-first for everything except /staff. Test at 375px.
+Bold, youthful, credible: large type, one strong accent color, soft cards, generous spacing. Cyrillic-safe font (e.g. Inter / Manrope via next/font).
+Motion with purpose: card swipe, points "+3" pop, streak flame, prediction reveal counter, badge unlock. Respect prefers-reduced-motion.
+All text Mongolian. No lorem ipsum, no dead buttons, every page has loading/empty/error states.
+Global rules
+Simple, readable code with Mongolian comments. No clever abstractions.
+Neutral and factual about politics. No MP rankings.
+No invented numbers anywhere (UI or pitch). Replays labelled.
+Never delete citizen comments (only label).
+Timeline (from now)
+When
+Checkpoint
++1h
+Cleanup done, new schema migrated, stubs + seed produce 10+ cards
++3h
+Landing + feed + quiz + points/streak work end-to-end on real seeded data
++5h
+Prediction reveal + badge + share image work; staff reply → badge works
+06:00
+Feature freeze. Deploy, record backup video, pitch rehearsal
