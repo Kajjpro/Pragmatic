@@ -47,6 +47,27 @@ async function call(
   return ok ? json : null;
 }
 
+// Зураг буцаадаг route (JSON биш): status, төрөл, хэмжээг шалгана
+async function callImage(label: string, path: string) {
+  const started = Date.now();
+  let status = 0;
+  let note = "";
+  try {
+    const res = await fetch(BASE + path);
+    status = res.status;
+    const type = res.headers.get("content-type") ?? "";
+    const bytes = (await res.arrayBuffer()).byteLength;
+    note = type.startsWith("image/png") ? `PNG ${Math.round(bytes / 1024)}KB` : `⚠ зураг биш (${type})`;
+  } catch (e) {
+    note = `холбогдож чадсангүй: ${e instanceof Error ? e.message : e}`;
+  }
+  const ok = status === 200 && note.startsWith("PNG");
+  results.push({
+    ok,
+    line: `${ok ? "✓" : "✗"} ${String(status).padEnd(3)} ${String(Date.now() - started).padStart(5)}ms  ${label.padEnd(34)} ${note}`,
+  });
+}
+
 async function main() {
   console.log(`Smoke test → ${BASE}\n`);
 
@@ -88,6 +109,7 @@ async function main() {
         return `${b.type}, ${b.firstName}, ${b.lawTitle ?? "-"} ${b.clauseNumber ?? ""}${leaked}`;
       },
     });
+    await callImage("GET /api/badges/[id]/image", `/api/badges/${process.env.BADGE_ID}/image`);
   }
   await call("GET /api/badges/[unknown]", "/api/badges/does-not-exist", 404);
 
@@ -131,6 +153,10 @@ async function main() {
     method: "POST",
     body: { willPass: true, supportGuess: 70 },
   });
+
+  // ── Ажилтны route-ууд нэвтрээгүй үед 401 ──
+  await call("POST /api/staff/vote-events/sync", "/api/staff/vote-events/sync", 401, { method: "POST" });
+  await call("POST /api/staff/.../[id]/reveal", "/api/staff/vote-events/x/reveal", 401, { method: "POST" });
 
   for (const r of results) console.log(r.line);
   const failed = results.filter((r) => !r.ok).length;

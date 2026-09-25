@@ -31,3 +31,7 @@ export type ClauseResult = {
 };
 
 export type Explanation = { what: string; why: string; who: string };
+
+// Хэрэглэгчийн оруулсан текст буруу (route → 400). AI модулиас тусад нь байлгана —
+// ингэснээр энгийн route-ууд AI-ийн сан ачаалахгүй.
+export class BadInputError extends Error {}

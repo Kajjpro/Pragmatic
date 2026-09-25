@@ -308,3 +308,60 @@ export async function awardReflectedForGroup(groupId: string): Promise<number> {
   }
   return awarded;
 }
+
+// ───────────── Санал хураалтын дүн (reveal) ─────────────
+
+export type VoteCounts = { support: number; oppose: number; total: number };
+
+// "Дэмжсэн нь олонх" = дэмжсэн > эсэргүүцсэн. Хууль батлагдах эрх зүйн дүрэм гэж БҮҮ тайлбарла.
+export function supportMajority(counts: VoteCounts): boolean {
+  return counts.support > counts.oppose;
+}
+
+// Санал хураалтын дүнг зарлаж, бүх таамгийг НЭГ transaction-д оноожуулна.
+// OPEN → REVEALED шилжилт нэг л удаа болдог тул хоёр дахь дуудлага юу ч хийхгүй (null буцаана).
+export async function revealVoteEvent(eventId: string, counts: VoteCounts) {
+  const passed = supportMajority(counts);
+
+  return prisma.$transaction(
+    async (tx) => {
+      // 1. Зөвхөн OPEN байвал REVEALED болгоно (давхар reveal-ээс хамгаална)
+      const marked = await tx.voteEvent.updateMany({
+        where: { id: eventId, status: "OPEN" },
+        data: {
+          status: "REVEALED",
+          actualSupport: counts.support,
+          actualOppose: counts.oppose,
+          actualTotal: counts.total,
+          passed,
+          revealedAt: new Date(),
+        },
+      });
+      if (marked.count === 0) return null;
+
+      // 2. Таамаг бүрийг оноожуулна
+      const predictions = await tx.prediction.findMany({
+        where: { voteEventId: eventId },
+        select: { id: true, userId: true, willPass: true, supportGuess: true },
+      });
+
+      let pointsAwarded = 0;
+      const notifications: { userId: string; text: string; link: string }[] = [];
+      for (const p of predictions) {
+        const points = scorePrediction(p, { passed, actualSupport: counts.support });
+        await tx.prediction.update({ where: { id: p.id }, data: { points } });
+        if (points > 0) {
+          await tx.user.update({ where: { id: p.userId }, data: { points: { increment: points } } });
+        }
+        pointsAwarded += points;
+        notifications.push({ userId: p.userId, text: `Таамгийн дүн гарлаа: +${points} оноо`, link: "/predict" });
+      }
+
+      // 3. Таамагласан хүн бүрт мэдэгдэл
+      await tx.notification.createMany({ data: notifications });
+
+      return { passed, scored: predictions.length, pointsAwarded };
+    },
+    { timeout: 30_000 }, // олон таамагтай үед 5 секундээс удаж болно
+  );
+}
