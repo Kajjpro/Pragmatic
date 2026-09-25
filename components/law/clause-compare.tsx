@@ -1,4 +1,4 @@
-import type { WordPart } from "@/lib/mock";
+import type { WordPart } from "@/lib/law/types";
 import { DiffText } from "./diff-text";
 
 // Хоёр багана: Хүчин төгөлдөр | Төсөл. Утас дээр босоо.
