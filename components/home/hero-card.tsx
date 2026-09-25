@@ -1,246 +1,122 @@
-"use client";
+import Link from "next/link";
 
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
-import { cn } from "@/lib/cn";
+// Нүүр хуудасны гол блок — бүтээгдэхүүний гол санааг 3 алхмаар харуулна.
+// Тоонууд нь DB-д байгаа бодит өгөгдлөөс ирдэг (зохиомол тоо байхгүй).
+export type HeroStats = {
+  changedClauses: number;
+  comments: number;
+  filtered: number;
+  groups: number;
+};
 
-const slides = [
+const steps = [
   {
-    kicker: "УИХ · ХЭВЛЭЛИЙН МЭДЭЭ",
-    date: "2026 оны 9 сарын 25, Баасан",
-    title:
-      "Цөлжилттэй тэмцэх НҮБ-ын конвенцын хөтөлбөрийг үндэсний үйл хэрэг болгох улс төрийн манлайлал",
-    lead:
-      "«Цөлжилт, газрын доройтол, ган гачигтай тэмцэх парламентын манлайлал» олон улсын форумд Монгол Улс тэргүүлэн оролцов.",
-    byline: "Хэвлэлийн албанаас",
-    read: "4 минут",
-    stat: { value: "196", label: "улс оролцов" },
+    n: 1,
+    title: "Ойлгох",
+    staff: "Заалт бүрийг үг тутмаар автоматаар харьцуулна",
+    citizen: "Мөн тэр өөрчлөлтийг энгийн монгол хэлээр",
   },
   {
-    kicker: "УИХ-ЫН ДАРГА · МЭДЭЭ",
-    date: "2026 оны 9 сарын 24, Пүрэв",
-    title:
-      "УИХ-ын дарга Азийн парламентын чуулганы үеэр хоёр талын уулзалт хийлээ",
-    lead:
-      "Бүс нутгийн парламентын хамтын ажиллагааг өргөжүүлэх санамж бичигт гарын үсэг зурав.",
-    byline: "Гадаад харилцааны хэлтэс",
-    read: "3 минут",
-    stat: { value: "12", label: "хоёр талын уулзалт" },
+    n: 2,
+    title: "Сонсох",
+    staff: "AI хамааралгүй саналыг шүүж, үлдсэнийг бүлэглэнэ",
+    citizen: "Санал нь цэгцтэйгээр ажилтанд хүрнэ",
   },
   {
-    kicker: "БАЙНГЫН ХОРОО · ХЭЛЭЛЦҮҮЛЭГ",
-    date: "2026 оны 9 сарын 23, Лхагва",
-    title:
-      "«Хөдөлмөрийн тухай хууль»-ийн шинэчилсэн найруулга парламентад хэлэлцэгдэнэ",
-    lead:
-      "24,500 иргэний саналыг AI кластераар ангилж, Нийгмийн бодлогын байнгын хороонд хүргүүлэв.",
-    byline: "Хууль тогтоомжийн газар",
-    read: "6 минут",
-    stat: { value: "24,500", label: "иргэний санал" },
+    n: 3,
+    title: "Хариулах",
+    staff: "Бүлэг тутамд нэг хариу, «Тусгасан / Тусгаагүй»",
+    citizen: "«✅ Таны санал тусгагдлаа» гэдгийг хардаг",
   },
 ];
 
-export function HeroCard() {
-  const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const kickerRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const leadRef = useRef<HTMLParagraphElement>(null);
-  const bylineRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (paused) return;
-    const id = setInterval(() => {
-      setActive((a) => (a + 1) % slides.length);
-    }, 8000);
-    return () => clearInterval(id);
-  }, [paused]);
-
-  useEffect(() => {
-    const targets = [
-      kickerRef.current,
-      titleRef.current,
-      leadRef.current,
-      bylineRef.current,
-    ].filter(Boolean);
-    if (!targets.length) return;
-
-    const tl = gsap.timeline();
-    tl.fromTo(
-      targets,
-      { y: 14, opacity: 0 },
-      {
-        y: 0,
-        opacity: 1,
-        duration: 0.9,
-        stagger: 0.12,
-        ease: "power2.out",
-      },
-    );
-    return () => {
-      tl.kill();
-    };
-  }, [active]);
-
-  const slide = slides[active];
-
+export function HeroCard({ stats }: { stats: HeroStats }) {
   return (
-    <article
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      className="group relative overflow-hidden rounded-2xl bg-parliament-950 shadow-[0_30px_80px_-40px_rgba(15,42,99,0.65)] ring-1 ring-white/[0.05] animate-rise"
-    >
-      <div className="relative aspect-[16/9] w-full">
-        {/* deep base — nearly flat, just a hint of dimension */}
-        <div
-          className="absolute inset-0 bg-[linear-gradient(180deg,#050e26_0%,#0a1a3d_60%,#08152f_100%)]"
-          aria-hidden
-        />
-
-        {/* single warm ambient glow (not aurora) */}
+    <section className="overflow-hidden rounded-2xl bg-parliament-950 text-white shadow-[0_30px_80px_-40px_rgba(15,42,99,0.65)]">
+      <div className="relative px-5 pb-6 pt-7 sm:px-8 sm:pb-8 sm:pt-9">
         <div className="warm-glow" aria-hidden />
 
-        {/* film grain */}
-        <div className="grain" aria-hidden />
-
-        {/* editorial rule at the very top */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold-400/40 to-transparent" />
-
-        {/* small masthead emblem — top-left */}
-        <div className="pointer-events-none absolute left-8 top-8 flex items-center gap-2.5">
-          <Image
-            src="/Их_хурал_logo.png"
-            alt=""
-            width={72}
-            height={72}
-            className="h-10 w-10 object-contain opacity-90"
-          />
-          <div className="hidden sm:block">
-            <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/50">
-              Монгол Улсын
-            </div>
-            <div className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-white/85">
-              Их Хурал
-            </div>
-          </div>
-        </div>
-
-        {/* reader stat — tiny, not a splashy pill */}
-        <div className="absolute right-8 top-8 flex items-center gap-3 text-[10.5px] font-medium uppercase tracking-[0.16em] text-white/50">
-          <span className="tabular-nums text-white/75">
-            {slide.stat.value}
-          </span>
-          <span>{slide.stat.label}</span>
-        </div>
-
-        {/* content — editorial column */}
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-5 px-8 pb-9 pt-24 text-white">
-          <div
-            ref={kickerRef}
-            className="flex items-center gap-3 text-[10.5px] font-semibold uppercase tracking-[0.24em] text-gold-400"
-          >
-            <span className="h-px w-6 bg-gold-400" />
-            <span>{slide.kicker}</span>
-            <span className="text-white/40">·</span>
-            <span className="text-white/60">{slide.date}</span>
+        <div className="relative">
+          <div className="flex items-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-400">
+            <span className="h-px w-5 bg-gold-400" />
+            Parlagmatic · Open Parliament
           </div>
 
-          <h2
-            ref={titleRef}
-            className="font-editorial max-w-3xl text-[26px] font-medium leading-[1.15] text-white sm:text-[30px] md:text-[34px]"
-          >
-            {slide.title}
-          </h2>
-
-          <p
-            ref={leadRef}
-            className="max-w-2xl text-[13.5px] leading-relaxed text-white/75"
-          >
-            {slide.lead}
+          <h1 className="mt-3 max-w-2xl font-editorial text-[25px] font-medium leading-[1.2] sm:text-[32px]">
+            Иргэн ба ажилтны хооронд нэг хана байдаг — ойлгоход хэцүү хуулийн
+            төсөл.
+          </h1>
+          <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-white/75">
+            Машин нэг удаа өөрчлөлтийг ойлговол хоёр тал хоёулаа хожино.
+            Ажилтны гар ажил хөнгөвчилж, иргэн саналынхаа хариуг хардаг.
+            <span className="font-semibold text-gold-400">
+              {" "}
+              Нэг ажил, хоёр ашиг.
+            </span>
           </p>
 
-          <div
-            ref={bylineRef}
-            className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/50"
-          >
-            <span className="uppercase tracking-[0.14em]">{slide.byline}</span>
-            <span className="h-3 w-px bg-white/20" />
-            <span>{slide.read} унших</span>
-            <span className="h-3 w-px bg-white/20" />
-            <button className="font-semibold text-white/85 transition hover:text-white">
-              Дэлгэрэнгүй →
-            </button>
+          {/* 3 алхам */}
+          <ol className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {steps.map((s) => (
+              <li
+                key={s.n}
+                className="rounded-xl bg-white/[0.06] p-3.5 ring-1 ring-white/10"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-gold-400 text-[10px] font-bold text-parliament-950">
+                    {s.n}
+                  </span>
+                  <span className="text-[13px] font-semibold text-white">
+                    {s.title}
+                  </span>
+                </div>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-white/70">
+                  <span className="font-semibold text-white/85">Ажилтан:</span>{" "}
+                  {s.staff}
+                </p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-white/70">
+                  <span className="font-semibold text-white/85">Иргэн:</span>{" "}
+                  {s.citizen}
+                </p>
+              </li>
+            ))}
+          </ol>
+
+          {/* Бодит тоонууд */}
+          <dl className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-white/10 pt-4">
+            <Stat value={stats.changedClauses} label="харьцуулсан заалт" />
+            <Stat value={stats.comments} label="иргэний санал" />
+            <Stat value={stats.filtered} label="AI шүүсэн санал" />
+            <Stat value={stats.groups} label="саналын бүлэг" />
+          </dl>
+
+          <div className="mt-5 flex flex-wrap items-center gap-2.5">
+            <Link
+              href="/me"
+              className="inline-flex min-h-11 items-center rounded-full bg-gold-400 px-4 text-[12.5px] font-semibold text-parliament-950 transition hover:bg-gold-300"
+            >
+              Миний санал тусгагдсан уу?
+            </Link>
+            <Link
+              href="/about"
+              className="inline-flex min-h-11 items-center rounded-full border border-white/25 px-4 text-[12.5px] font-semibold text-white/90 transition hover:border-white hover:text-white"
+            >
+              Хэрхэн ажилладаг
+            </Link>
           </div>
         </div>
-
-        {/* nav arrows — quieter */}
-        <div className="absolute inset-y-0 left-3 flex items-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-          <button
-            aria-label="Өмнөх"
-            onClick={() =>
-              setActive((a) => (a - 1 + slides.length) % slides.length)
-            }
-            className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
-          >
-            <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-              <path
-                d="m12 5-5 5 5 5"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-        <div className="absolute inset-y-0 right-3 flex items-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-          <button
-            aria-label="Дараах"
-            onClick={() => setActive((a) => (a + 1) % slides.length)}
-            className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
-          >
-            <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-              <path
-                d="m8 5 5 5-5 5"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
       </div>
+    </section>
+  );
+}
 
-      {/* footer nav — thin rule + dots */}
-      <div className="relative flex items-center justify-between bg-parliament-950 px-8 py-3">
-        <div className="absolute inset-x-8 top-0 h-px bg-white/[0.06]" />
-        <div className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.16em] text-white/45">
-          <span className="tabular-nums text-white/75">
-            {(active + 1).toString().padStart(2, "0")}
-          </span>
-          <span>/</span>
-          <span className="tabular-nums">
-            {slides.length.toString().padStart(2, "0")}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              aria-label={`Слайд ${i + 1}`}
-              onClick={() => setActive(i)}
-              className={cn(
-                "h-1 rounded-full transition-all duration-500 ease-out",
-                i === active
-                  ? "w-10 bg-gold-400/80"
-                  : "w-4 bg-white/15 hover:bg-white/30",
-              )}
-            />
-          ))}
-        </div>
-      </div>
-    </article>
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <div>
+      <dt className="font-editorial text-2xl font-medium tabular-nums text-gold-400">
+        {value.toLocaleString("mn-MN")}
+      </dt>
+      <dd className="text-[11px] text-white/60">{label}</dd>
+    </div>
   );
 }
