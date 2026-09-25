@@ -23,6 +23,7 @@ import { makeQuiz, makeQuizText, type QuizQuestion } from "../lib/ai/quiz";
 import { filterComments, groupComments } from "../lib/ai/comments";
 import { writeReply } from "../lib/ai/reply";
 import { makeVoteHook } from "../lib/ai/vote-hook";
+import { finalReadingVote, getAgendaList, getAgendaVoteList, type Agenda } from "../lib/parliament";
 import { modelsUsed } from "../lib/ai/client";
 import {
   optionsToText,
@@ -34,6 +35,7 @@ import {
   type PrecomputedComment,
   type PrecomputedGroup,
   type PrecomputedQuiz,
+  type PrecomputedVoteEvent,
 } from "../lib/ai/precomputed";
 
 // ── Тохиргоо ──
@@ -42,6 +44,7 @@ const OUT_DIR = getArg("out") || "data";
 const MAX_BILLS = Number(getArg("max-bills") || 10);
 const USE_LAWFORUM = !args.includes("--no-lawforum");
 const MAX_CHANGE_CARDS = 8;
+const MAX_VOTE_EVENTS = 5; // таамгийн тоглоомд хэдэн асуудал бэлдэх вэ
 const MIN_DESCRIPTION_LENGTH = 400; // үүнээс богино тайлбартай төслөөс үнэн зөв карт гарахгүй
 const MAX_DESCRIPTION_LENGTH = 5000; // AI-д хэт урт текст илгээхгүй
 const QUIZ_TRIES = 2;
@@ -56,6 +59,9 @@ const TEEN_TOPICS = [
   "байгаль", "агаар", "орчин", "усны",
   "эрүүл мэнд", "эмнэлэг", "эмийн", "спорт", "гэр бүл",
 ];
+
+// Нэрэнд нь эдгээр үг байвал алгасна: тайлан, олон улсын гэрээ, худалдан авалт нь сурагчдад карт болохгүй
+const SKIP_TOPICS = ["тайлан", "соёрхон батлах", "хэлэлцээр", "гэрээ", "худалдан авах", "зээл", "давхардал"];
 
 function getArg(name: string): string {
   const found = args.find((a) => a.startsWith(`--${name}=`));
@@ -231,14 +237,36 @@ async function buildLawforumBills(): Promise<{ bills: PrecomputedBill[]; cards: 
     .sort((a, b) => b.score - a.score || (b.project.publishedOnUtc || "").localeCompare(a.project.publishedOnUtc || ""));
   console.log(`   ${projects.length} төслөөс ${candidates.length} нь сэдэвт тохирч байна`);
 
+  // Демо төслийг (data/source.txt) дахин BILL карт болгохгүй
+  const demoUrl = existsSync("data/source.txt") ? readData("source.txt") : "";
+  // Ижил нэртэй төслийг (жишээ нь нэг хуулийн хоёр хувилбар) нэг л удаа авна
+  const seenTitles: string[] = [];
+
   // c. Нэг нэгээр нь дэлгэрэнгүйг авч карт хийнэ
   for (const { project } of candidates) {
     if (cards.length >= MAX_BILLS) {
       break;
     }
-    const detail = await getProject(project.id);
+    if (lawforumPageUrl(project.id, null) === demoUrl) {
+      continue;
+    }
+    const simpleTitle = simplifyTitle(project.title || "");
+    if (seenTitles.includes(simpleTitle)) {
+      console.log(`── lf-${project.id}: алгаслаа (ижил нэртэй төсөл аль хэдийн орсон)`);
+      continue;
+    }
+    seenTitles.push(simpleTitle);
+    const detail = await getProjectSafe(project.id);
+    if (detail === null) {
+      console.log(`── lf-${project.id}: алгаслаа (lawforum хариулсангүй)`);
+      continue;
+    }
     const title = (detail.title || "").trim();
-    const description = stripHtml(detail.description || "");
+    let description = stripHtml(detail.description || "");
+    // API-ийн description бараг үргэлж хоосон байдаг → нийтийн хуудаснаас төслийн текстийг авна
+    if (description.length < MIN_DESCRIPTION_LENGTH) {
+      description = await fetchBillTextFromPage(project.id);
+    }
     console.log(`── lf-${project.id}: ${title.slice(0, 70)}`);
     if (description.length < MIN_DESCRIPTION_LENGTH) {
       console.log(`   алгаслаа: тайлбар ${description.length} тэмдэгт (хэт богино)`);
@@ -259,16 +287,32 @@ async function buildLawforumBills(): Promise<{ bills: PrecomputedBill[]; cards: 
   return { bills, cards };
 }
 
-// Төслийн нэрэнд сэдвийн хэдэн түлхүүр үг байгааг тоолно
+// Төслийн нэрэнд сэдвийн хэдэн түлхүүр үг байгааг тоолно. Алгасах сэдэв байвал 0.
 function topicScore(title: string): number {
   const lower = title.toLowerCase();
+  for (const skip of SKIP_TOPICS) {
+    if (lower.includes(skip)) {
+      return 0;
+    }
+  }
+  // "ажил" нь "үйл ажиллагаа" гэдэгт андуурагдахгүйн тулд "ажиллагаа"-г тооцохгүй
+  const cleaned = lower.replace(/ажиллагаа/g, "");
   let score = 0;
   for (const topic of TEEN_TOPICS) {
-    if (lower.includes(topic)) {
+    if (cleaned.includes(topic)) {
       score++;
     }
   }
   return score;
+}
+
+// Нэрийг харьцуулахад бэлдэнэ: жижиг үсэг, "хууль"/"тухай" үггүй, зөвхөн үсэг.
+// "ЭРҮҮЛ МЭНДИЙН АЖИЛТНЫ ТУХАЙ" ба "ЭРҮҮЛ МЭНДИЙН АЖИЛТНЫ ТУХАЙ ХУУЛЬ" → ижил
+function simplifyTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/хууль|тухай/g, "")
+    .replace(/[^\p{L}]+/gu, "");
 }
 
 // lawforum-ын хуудасны хаяг. slugUrl бүтэн хаяг бол түүнийг, үгүй бол id-аар.
@@ -278,6 +322,103 @@ function lawforumPageUrl(id: number, slugUrl: string | null): string {
     return slugUrl;
   }
   return `https://lawforum.parliament.mn/project/${id}`;
+}
+
+// lawforum сервер заримдаа хариулахгүй (timeout) байдаг → 3 удаа оролдоно, бүтэхгүй бол null
+const LAWFORUM_TRIES = 3;
+
+async function getProjectSafe(id: number) {
+  for (let attempt = 1; attempt <= LAWFORUM_TRIES; attempt++) {
+    try {
+      return await getProject(id);
+    } catch (error) {
+      console.log(`   lawforum хариулсангүй (${attempt}-р оролдлого): ${String(error).slice(0, 80)}`);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
+  return null;
+}
+
+// Хуудсыг татна. Бүтэхгүй бол 3 удаа оролдоод хоосон текст буцаана.
+async function fetchPageSafe(url: string): Promise<string> {
+  for (let attempt = 1; attempt <= LAWFORUM_TRIES; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        return await response.text();
+      }
+    } catch (error) {
+      console.log(`   хуудас татагдсангүй (${attempt}-р оролдлого): ${String(error).slice(0, 80)}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  }
+  return "";
+}
+
+// lawforum-ын нийтийн хуудаснаас төслийн албан ёсны текстийг (гарчиг + зүйлүүд) үг үсгээр нь авна.
+// Хуудасны бүтэц: "МОНГОЛ УЛСЫН ХУУЛЬ" → огноо → гарчиг → зүйлүүд → "Төслийн файлууд".
+// Ийм хэсэг олдохгүй бол (хуучин загварын хуудас, зөвхөн файлтай төсөл) хоосон текст буцаана.
+async function fetchBillTextFromPage(id: number): Promise<string> {
+  // 1. Хуудсыг татна
+  let html = await fetchPageSafe(lawforumPageUrl(id, null));
+  if (html === "") {
+    return "";
+  }
+
+  // 2. Script/style болон санал, like-ийн товчнуудыг хасна (тэдний тоо хуулийн текстэнд холилдохгүй)
+  html = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "");
+  html = html.replace(/<a href="\/(?:projectrefcomments|prca)\/[^"]*"[\s\S]*?<\/a>/g, "");
+
+  // 3. Мөр шилжүүлдэг тагуудыг мөр болгож, бусад тагийг хасна
+  html = html.replace(/<br\s*\/?>|<\/(?:div|p|li|h\d)>/gi, "\n");
+  const text = decodeEntities(html.replace(/<[^>]+>/g, ""));
+
+  // 4. Хоосон биш мөрүүд
+  const lines: string[] = [];
+  for (const raw of text.split("\n")) {
+    const line = raw.replace(/[ \t ]+/g, " ").trim();
+    if (line !== "") {
+      lines.push(line);
+    }
+  }
+
+  // 5. Албан ёсны хэсгийн эхлэл
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i] === "МОНГОЛ УЛСЫН ХУУЛЬ" || lines[i] === "МОНГОЛ УЛСЫН ИХ ХУРЛЫН ТОГТООЛ") {
+      start = i;
+      break;
+    }
+  }
+  if (start === -1) {
+    return "";
+  }
+
+  // 6. "Төслийн файлууд" хүртэлх мөрүүд (огнооны мөрийг алгасна)
+  const body: string[] = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    if (lines[i].startsWith("Төслийн файлууд")) {
+      break;
+    }
+    if (/^\d{4} оны .* өдөр/.test(lines[i])) {
+      continue;
+    }
+    body.push(lines[i]);
+  }
+  return body.join("\n");
+}
+
+// HTML-ийн тусгай тэмдэгтүүдийг (&amp; &quot; &#8220; &#x41C; ...) жирийн тэмдэгт болгоно.
+// lawforum кирилл үсгийг hex хэлбэрээр (&#x41C; = М) бичдэг.
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&amp;/g, "&");
 }
 
 // HTML-ийг цэвэр текст болгоно
@@ -316,21 +457,56 @@ function orderCards(cards: PrecomputedCard[]): PrecomputedCard[] {
 // 4. Санал хураалтын таамаг
 // ════════════════════════════════════════════════
 
-async function buildVoteEvents() {
+async function buildVoteEvents(): Promise<PrecomputedVoteEvent[]> {
   console.log("\n══ 4. Санал хураалтын таамаг (ParliamentAPI)");
-  // Dev 1-ийн lib/parliament.ts-д getAgendaList, getAgendaVoteList хэрэгтэй.
-  // Файл одоогоор хоосон тул TypeScript import хийхгүй — замыг хувьсагчаар өгнө
-  const parliamentPath = "../lib/parliament";
-  const parliament = (await import(parliamentPath)) as Record<string, unknown>;
-  if (typeof parliament.getAgendaList !== "function" || typeof parliament.getAgendaVoteList !== "function") {
-    console.log("   ✗ lib/parliament.ts-д getAgendaList / getAgendaVoteList алга → алгаслаа");
-    return [];
+  const events: PrecomputedVoteEvent[] = [];
+
+  // a. ParliamentAPI-ийн хаяг (хакатоны зохион байгуулагчаас авна) тохируулаагүй бол алгасна
+  if (!process.env.PARLIAMENT_API_URL) {
+    console.log("   ✗ PARLIAMENT_API_URL .env-д алга → алгаслаа");
+    return events;
   }
-  // Функцууд бэлэн болмогц тэдний буцаах хэлбэрийг харж энд гүйцээнэ (Dev 2).
-  // makeVoteHook(title, summary) → hook, isReplay: true.
-  console.log("   ⚠ lib/parliament.ts бэлэн болсон — энэ алхмыг гүйцээх хэрэгтэй (Dev 2)");
-  void makeVoteHook;
-  return [];
+
+  // b. Хэлэлцэх асуудлын жагсаалт
+  let agendas: Agenda[] = [];
+  try {
+    agendas = await getAgendaList();
+  } catch (error) {
+    console.log("   ✗ ParliamentAPI-тай холбогдож чадсангүй, алгаслаа:", String(error).slice(0, 200));
+    return events;
+  }
+
+  // c. Залуучуудад хамаатай сэдвээр эрэмбэлнэ (карттай ижил оноо)
+  const candidates = agendas
+    .map((agenda) => ({ agenda, score: topicScore(agenda.title) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  console.log(`   ${agendas.length} асуудлаас ${candidates.length} нь сэдэвт тохирч байна`);
+
+  // d. Асуудал бүрт: санал хураалт болсон эсэх (replay) + төвийг сахисан таамгийн асуулт
+  for (const { agenda } of candidates) {
+    if (events.length >= MAX_VOTE_EVENTS) {
+      break;
+    }
+    let isReplay = false;
+    try {
+      const votes = await getAgendaVoteList(agenda.agendaCode);
+      isReplay = finalReadingVote(votes) !== null; // эцсийн санал хураалт аль хэдийн болсон
+    } catch (error) {
+      console.log(`   ${agenda.agendaCode}: санал хураалтын мэдээлэл авч чадсангүй, алгаслаа (${String(error).slice(0, 80)})`);
+      continue;
+    }
+
+    await pause();
+    const hook = await makeVoteHook(agenda.title, agenda.title);
+    if (hook === null) {
+      console.log(`   ✗ ${agenda.agendaCode}: hook гарсангүй`);
+      continue;
+    }
+    events.push({ agendaCode: agenda.agendaCode, title: agenda.title, hook, isReplay });
+    console.log(`   ✓ ${agenda.agendaCode}${isReplay ? " (өмнө болсон — дахин тоглох)" : ""}: ${hook}`);
+  }
+  return events;
 }
 
 // ════════════════════════════════════════════════

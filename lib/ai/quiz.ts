@@ -143,6 +143,17 @@ export function checkQuestion(item: unknown, cardText: string): { question: Quiz
     return { question: null, problem: `картын текстэд байхгүй тоо: ${missing.join(", ")}` };
   }
 
+  // 8. Төвийг сахих: асуулт, хариулт, тайлбарт хүний нэр ("Б.Энх-Амгалан" гэх мэт) байж болохгүй
+  const allText = `${questionText} ${options.join(" ")} ${explanation}`;
+  if (/[А-ЯӨҮЁ]\.\s?[А-ЯӨҮЁ][а-яөүё]/.test(allText)) {
+    return { question: null, problem: "хүний нэр орсон" };
+  }
+
+  // 9. Зөв хариулт нь мэдэгдэл байх ёстой, асуулт биш
+  if (options[correctIndex].endsWith("?")) {
+    return { question: null, problem: "зөв хариулт нь асуулт байна" };
+  }
+
   return { question: { kind, question: questionText, options, correctIndex, explanation, keyPhrase }, problem: "" };
 }
 
@@ -184,6 +195,9 @@ ${cardText}
 - Зөв хариулт, тайлбарт гарах тоо бүр картын текстэд байх ёстой. Тоог цифрээр бич.
 - Картын текстэд байхгүй баримт бүү зохио.
 - "Бүгд зөв", "Аль нь ч биш" гэсэн хариулт бүү хэрэглэ.
+- TRUE_FALSE-ийн хариултууд нь бүгд мэдэгдэл байна (асуултын тэмдэгтэй өгүүлбэр биш).
+- Хүний нэр (УИХ-ын гишүүн, санаачлагч гэх мэт), товчлол (БХ, ЗГ гэх мэт) бүү оруул.
+- Энэ бол батлагдаагүй төсөл: "батлагдсан", "боллоо" гэж бүү бич.
 - Энгийн монгол хэл. Хуулийг сайн, муу гэж бүү үнэл.
 
 ЗӨВХӨН ИЙМ JSON БУЦАА:
