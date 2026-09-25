@@ -8,6 +8,7 @@
 //     аль хэдийн байгаа төсөлд зөвхөн LawForum-ын мета мэдээллийг шинэчилнэ.
 //   - LawForum-ын "stage" дугаарын утга баталгаагүй тул манай 4 шат руу хөрвүүлэхгүй.
 import { getAllProjects, getProject, type ProjectDetail, type ProjectListItem } from "@/lib/lawforum";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 const CONCURRENCY = 6; // LawForum-ыг ачаалахгүйн тулд зэрэг 6 хүсэлт
@@ -85,7 +86,8 @@ async function saveOne(item: ProjectListItem, detail: ProjectDetail | null): Pro
   return "created";
 }
 
-export async function syncLawforumProjects(): Promise<SyncProjectsReport> {
+// withDetails=false: зөвхөн жагсаалтаар хурдан хадгална (нэг хүсэлт) — анх удаа хуудсыг хоосон харуулахгүйн тулд.
+export async function syncLawforumProjects({ withDetails = true } = {}): Promise<SyncProjectsReport> {
   const all = await getAllProjects();
   const active = all.filter((p) => p.isActive);
   const report: SyncProjectsReport = { fetched: all.length, active: active.length, created: 0, updated: 0, detailFailed: 0 };
@@ -95,8 +97,8 @@ export async function syncLawforumProjects(): Promise<SyncProjectsReport> {
     const batch = active.slice(i, i + CONCURRENCY);
     await Promise.all(
       batch.map(async (item) => {
-        const detail = await getProject(item.id).catch(() => null);
-        if (!detail) report.detailFailed++;
+        const detail = withDetails ? await getProject(item.id).catch(() => null) : null;
+        if (withDetails && !detail) report.detailFailed++;
         const result = await saveOne(item, detail);
         if (result === "created") report.created++;
         if (result === "updated") report.updated++;
@@ -104,4 +106,49 @@ export async function syncLawforumProjects(): Promise<SyncProjectsReport> {
     );
   }
   return report;
+}
+
+// ───────────── Автомат шинэчлэл ─────────────
+// /bills нээгдэх бүрд дуудна. Хэн нэгэн гараар sync хийхийг хүлээхгүй:
+//   - LawForum-оос нэг ч удаа татаагүй бол (зөвхөн seed-ийн төслүүд) → жагсаалтыг ДОР НЬ татаж хадгална (хуудас хоосон гарахгүй),
+//     дэлгэрэнгүйг (танилцуулга, статистик) хариу илгээсний дараа цаана нь татна.
+//   - 6 цагаас хуучин бол → хэрэглэгчийг хүлээлгэхгүй, цаана нь шинэчилнэ.
+//   - LawForum унасан бол DB-д байгаагаар нь харуулна.
+const STALE_MS = 6 * 60 * 60 * 1000;
+let running: Promise<unknown> | null = null; // нэг сервер дээр давхар sync эхлүүлэхгүй
+
+function runOnce(task: () => Promise<unknown>): Promise<unknown> {
+  running ??= task()
+    .catch((error) => console.error("LawForum sync амжилтгүй:", error))
+    .finally(() => {
+      running = null;
+    });
+  return running;
+}
+
+export type FreshnessResult = "ok" | "lawforum-unreachable";
+
+export async function ensureProjectsFresh(): Promise<FreshnessResult> {
+  // lawforumStage-г зөвхөн энэ sync бөглөдөг (seed бөглөдөггүй) → sync огт хийгдсэн эсэхийн тэмдэг
+  const latest = await prisma.project.findFirst({
+    where: { lawforumStage: { not: null } },
+    orderBy: { updatedAt: "desc" },
+    select: { updatedAt: true },
+  });
+
+  if (!latest) {
+    try {
+      await syncLawforumProjects({ withDetails: false });
+    } catch (error) {
+      console.error("LawForum-оос төсөл татаж чадсангүй:", error);
+      return "lawforum-unreachable";
+    }
+    after(() => runOnce(() => syncLawforumProjects()));
+    return "ok";
+  }
+
+  if (Date.now() - latest.updatedAt.getTime() > STALE_MS) {
+    after(() => runOnce(() => syncLawforumProjects()));
+  }
+  return "ok";
 }
