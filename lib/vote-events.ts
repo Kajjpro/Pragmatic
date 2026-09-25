@@ -65,13 +65,15 @@ export async function syncVoteEvents(
 ): Promise<SyncReport> {
   const report: SyncReport = { checked: 0, created: 0, updated: 0, replays: 0, skipped: [] };
 
-  // 1. Бидний сонирхсон асуудлууд: agendaCode-той төслүүд + Dev 2-ийн жагсаалт
+  // 1. Бидний сонирхсон асуудлууд: agendaCode-той төслүүд + Dev 2-ийн жагсаалт + seed хийсэн санал хураалтууд.
+  //    Гарчиг, hook: файлаас, байхгүй бол DB-д аль хэдийн хадгалсан (seed) хувилбар.
   const projects = await prisma.project.findMany({
     where: { agendaCode: { not: null } },
     select: { id: true, title: true, agendaCode: true },
   });
   const projectByCode = new Map(projects.map((p) => [p.agendaCode as string, p]));
-  const hookByCode = new Map(hooks.map((h) => [h.agendaCode, h]));
+  const saved = await prisma.voteEvent.findMany({ select: { agendaCode: true, title: true, hook: true } });
+  const hookByCode = new Map([...saved, ...hooks].map((h) => [h.agendaCode, h]));
   const codes = [...new Set([...projectByCode.keys(), ...hookByCode.keys()])];
 
   // 2. ParliamentAPI-д байгаа асуудлууд (энд унавал бүхэлдээ зогсоно)

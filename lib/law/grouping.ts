@@ -30,6 +30,18 @@ export async function groupBillComments(
   for (const clause of clauses) {
     const clauseText = clause.newText ?? clause.oldText ?? "";
 
+    // Шинэ санал (шүүгдээгүй, эсвэл хамааралтай ч бүлэггүй) алга бол юу ч хийхгүй:
+    // бэлэн (seed-ийн) бүлгүүд хэвээр үлдэж, AI дуудагдахгүй — демо дээр товч дарахад AI хүлээхгүй.
+    const newComments = await prisma.comment.count({
+      where: {
+        clauseId: clause.id,
+        clusterId: null,
+        suspicious: false,
+        OR: [{ filterStatus: null }, { filterStatus: "RELEVANT" }],
+      },
+    });
+    if (newComments === 0) continue;
+
     await prisma.cluster.deleteMany({
       where: { clauseId: clause.id, reflection: "PENDING", replyText: null },
     });

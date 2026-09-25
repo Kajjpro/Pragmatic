@@ -26,13 +26,13 @@ export function StaffNav() {
               className={cn(
                 "press relative flex min-h-12 items-center whitespace-nowrap px-4 text-[14px] font-semibold transition-colors",
                 active
-                  ? "text-parliament-900"
-                  : "text-ink-600 hover:text-parliament-800",
+                  ? "text-ink-950"
+                  : "text-ink-600 hover:text-brand-800",
               )}
             >
               {it.label}
               {active ? (
-                <span className="absolute inset-x-3 -bottom-px h-[3px] rounded-full bg-gold-400" />
+                <span className="absolute inset-x-3 -bottom-px h-[3px] rounded-full bg-point-400" />
               ) : null}
             </Link>
           );
