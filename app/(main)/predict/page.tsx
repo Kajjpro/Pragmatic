@@ -1,20 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { SignInButton, useUser } from "@clerk/nextjs";
 import { Pill } from "@/components/ui/pill";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useToast } from "@/components/ui/toast";
-import { mockVoteEvents } from "@/lib/mock";
-import type { VoteEvent } from "@/lib/types";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { fetchVoteEvents, postPrediction } from "@/components/feed/feed-data";
+import { MAX_SUPPORT_GUESS, type VoteEvent } from "@/lib/types";
 import { cn } from "@/lib/cn";
 
-// ② Таамаг — санал хураалтыг таамаглах.
-// ДЕМО: үйл явдлууд lib/mock.ts-ээс. Dev 1-ийн GET /api/vote-events ба
-// POST /api/vote-events/[id]/predict бэлэн болмогц тийш шилжинэ.
+// ② Таамаг — GET /api/vote-events, POST /api/vote-events/[id]/predict.
+// Бодит тоо зөвхөн сервер REVEALED гэж буцаасан үед харагдана.
 export default function PredictPage() {
-  const events = mockVoteEvents;
+  const [events, setEvents] = useState<VoteEvent[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchVoteEvents()
+      .then((e) => {
+        if (!cancelled) setEvents(e);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Татаж чадсангүй");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  const reload = useCallback(() => {
+    setError(null);
+    setEvents(null);
+    setReloadKey((k) => k + 1);
+  }, []);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
@@ -27,43 +51,69 @@ export default function PredictPage() {
         </p>
       </header>
 
-      {events.length === 0 ? (
-        <div className="mt-8">
+      <div className="mt-6">
+        {error ? (
+          <ErrorState
+            description={`${error}. Түр хүлээгээд дахин оролдоно уу.`}
+            retry={reload}
+          />
+        ) : events === null ? (
+          <div className="flex flex-col gap-4" aria-busy="true">
+            {[0, 1].map((i) => (
+              <div key={i} className="rounded-3xl border border-ink-200 bg-white p-5 shadow-card">
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <Skeleton className="mt-3 h-7 w-4/5" />
+                <Skeleton className="mt-2 h-4 w-3/5" />
+                <Skeleton className="mt-5 h-14 w-full rounded-2xl" />
+              </div>
+            ))}
+            <span className="sr-only">Санал хураалтыг ачаалж байна…</span>
+          </div>
+        ) : events.length === 0 ? (
           <EmptyState
             emoji="🎯"
-            title="Одоогоор нээлттэй таамаг алга"
+            title="Одоогоор таамаглах санал хураалт алга"
             description="Санал хураалт товлогдмогц энд гарч ирнэ."
           />
-        </div>
-      ) : (
-        <div className="mt-6 flex flex-col gap-5">
-          {events.map((e) => (
-            <PredictCard key={e.id} event={e} />
-          ))}
-        </div>
-      )}
+        ) : (
+          <div className="flex flex-col gap-5">
+            {events.map((e) => (
+              <PredictCard key={e.id} event={e} onSaved={reload} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function PredictCard({ event }: { event: VoteEvent }) {
-  const toast = useToast();
+function PredictCard({ event, onSaved }: { event: VoteEvent; onSaved: () => void }) {
+  const { isSignedIn } = useUser();
   const reduce = useReducedMotion();
   const [willPass, setWillPass] = useState<boolean | null>(null);
-  const [support, setSupport] = useState(38); // УИХ 76 гишүүний дунд утга
+  const [support, setSupport] = useState(Math.round(MAX_SUPPORT_GUESS / 2));
+  const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const revealed = event.status === "REVEALED";
 
-  function submit() {
+  async function submit() {
     if (willPass === null) {
-      toast("Эхлээд «Батлагдана» эсвэл «Батлагдахгүй» гэж сонгоно уу", "bad");
+      setError("Эхлээд «Батлагдана» эсвэл «Батлагдахгүй» гэж сонгоно уу");
       return;
     }
-    // Одоогоор зөвхөн энэ төхөөрөмж дээр. Dev 1-ийн API бэлэн болмогц
-    // POST /api/vote-events/[id]/predict руу илгээнэ.
-    setSent(true);
-    toast("Таамаг хүлээж авлаа", "ok");
+    setError(null);
+    setBusy(true);
+    try {
+      await postPrediction(event.id, willPass, support);
+      setSent(true);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Хадгалж чадсангүй");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -71,22 +121,61 @@ function PredictCard({ event }: { event: VoteEvent }) {
       <div className="flex flex-wrap items-center gap-2">
         {event.isReplay ? (
           <Pill tone="neutral">Өмнө болсон санал хураалт — дахин тоглох</Pill>
+        ) : revealed ? (
+          <Pill tone="ok">Дүн гарсан</Pill>
         ) : (
           <Pill tone="brand">Нээлттэй</Pill>
         )}
+        {typeof event.predictionCount === "number" && event.predictionCount > 0 ? (
+          <span className="text-[13px] font-semibold text-ink-600">
+            {event.predictionCount.toLocaleString("mn-MN")} хүн таамагласан
+          </span>
+        ) : null}
       </div>
 
       <h2 className="mt-3 text-[20px] font-extrabold leading-snug tracking-tight text-ink-950">
         {event.hook}
       </h2>
-      <p className="mt-1.5 text-[14.5px] leading-relaxed text-ink-600">
-        {event.title}
-      </p>
+      <p className="mt-1.5 text-[14.5px] leading-relaxed text-ink-600">{event.title}</p>
 
       {revealed ? (
-        // Бодит тоо зөвхөн ParliamentAPI-аас ирнэ — энд хэзээ ч зохиомол тоо бичихгүй
-        <div className="mt-4 rounded-2xl bg-ink-50 p-4 text-[15px] font-semibold text-ink-700">
-          Үр дүн нээгдсэн.
+        // Бүх тоо серверээс — энд хэзээ ч зохиомол тоо бичихгүй
+        <div className="mt-4 rounded-2xl bg-ink-50 p-4">
+          <p className="text-[17px] font-extrabold text-ink-950">
+            {event.passed ? "✅ Батлагдсан" : "❌ Батлагдаагүй"}
+          </p>
+          <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-[15px]">
+            {event.actualSupport !== null ? (
+              <div>
+                <dt className="text-[12.5px] font-bold uppercase tracking-wide text-ink-600">
+                  Дэмжсэн
+                </dt>
+                <dd className="font-extrabold tabular-nums text-ok-800">
+                  {event.actualSupport}
+                </dd>
+              </div>
+            ) : null}
+            {event.actualOppose !== null ? (
+              <div>
+                <dt className="text-[12.5px] font-bold uppercase tracking-wide text-ink-600">
+                  Эсрэг
+                </dt>
+                <dd className="font-extrabold tabular-nums text-bad-800">
+                  {event.actualOppose}
+                </dd>
+              </div>
+            ) : null}
+            {event.actualTotal !== null ? (
+              <div>
+                <dt className="text-[12.5px] font-bold uppercase tracking-wide text-ink-600">
+                  Нийт
+                </dt>
+                <dd className="font-extrabold tabular-nums text-ink-900">
+                  {event.actualTotal}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
         </div>
       ) : sent ? (
         <motion.div
@@ -95,8 +184,7 @@ function PredictCard({ event }: { event: VoteEvent }) {
           className="mt-4 rounded-2xl bg-ok-50 p-4"
         >
           <p className="text-[15.5px] font-extrabold text-ok-800">
-            Таны таамаг: {willPass ? "Батлагдана" : "Батлагдахгүй"} ·{" "}
-            {support} гишүүн дэмжинэ
+            Таны таамаг: {willPass ? "Батлагдана" : "Батлагдахгүй"} · {support} гишүүн дэмжинэ
           </p>
           <p className="mt-1 text-[14px] font-semibold text-ink-700">
             Бодит санал хураалт болмогц үр дүнг харуулж, оноог тооцно.
@@ -104,7 +192,6 @@ function PredictCard({ event }: { event: VoteEvent }) {
         </motion.div>
       ) : (
         <div className="mt-5 flex flex-col gap-5">
-          {/* Батлагдах уу? */}
           <div>
             <h3 className="text-[13px] font-extrabold uppercase tracking-[0.1em] text-ink-600">
               Батлагдах уу?
@@ -119,8 +206,9 @@ function PredictCard({ event }: { event: VoteEvent }) {
                   type="button"
                   onClick={() => setWillPass(o.value)}
                   aria-pressed={willPass === o.value}
+                  disabled={busy}
                   className={cn(
-                    "press min-h-14 rounded-2xl border-2 text-[16px] font-extrabold",
+                    "press min-h-14 rounded-2xl border-2 text-[16px] font-extrabold disabled:opacity-60",
                     willPass === o.value
                       ? "border-brand-600 bg-brand-600 text-white shadow-brand"
                       : "border-ink-200 bg-white text-ink-900 hover:border-brand-400 hover:text-brand-700",
@@ -132,7 +220,6 @@ function PredictCard({ event }: { event: VoteEvent }) {
             </div>
           </div>
 
-          {/* Хэдэн гишүүн дэмжих вэ? */}
           <div>
             <label
               htmlFor={`support-${event.id}`}
@@ -145,9 +232,10 @@ function PredictCard({ event }: { event: VoteEvent }) {
                 id={`support-${event.id}`}
                 type="range"
                 min={0}
-                max={76}
+                max={MAX_SUPPORT_GUESS}
                 value={support}
-                onChange={(e) => setSupport(Number(e.target.value))}
+                disabled={busy}
+                onChange={(ev) => setSupport(Number(ev.target.value))}
                 className="h-2 w-full cursor-pointer appearance-none rounded-full bg-ink-200 accent-brand-600"
               />
               <span className="w-16 shrink-0 rounded-xl bg-brand-50 py-1.5 text-center text-[17px] font-extrabold tabular-nums text-brand-700">
@@ -155,13 +243,38 @@ function PredictCard({ event }: { event: VoteEvent }) {
               </span>
             </div>
             <p className="mt-1.5 text-[13px] text-ink-600">
-              УИХ-ын нийт 76 гишүүнээс
+              УИХ-ын нийт {MAX_SUPPORT_GUESS} гишүүнээс
             </p>
           </div>
 
-          <Button onClick={submit} size="lg" className="w-full">
-            Таамаг илгээх
-          </Button>
+          {error ? (
+            <p role="alert" className="text-[14.5px] font-semibold text-bad-800">
+              {error}
+            </p>
+          ) : null}
+
+          {isSignedIn ? (
+            <button
+              type="button"
+              onClick={submit}
+              disabled={busy}
+              className="press min-h-14 w-full rounded-2xl bg-brand-600 text-[16.5px] font-extrabold text-white shadow-brand hover:bg-brand-700 disabled:opacity-60"
+            >
+              {busy ? "Хадгалж байна…" : "Таамаг илгээх"}
+            </button>
+          ) : (
+            // Зочин таамаг хадгалж чадахгүй — үүнийг урьдчилж хэлнэ
+            <div className="rounded-2xl bg-ink-50 p-4 text-center">
+              <p className="text-[14.5px] font-semibold text-ink-700">
+                Таамгаа хадгалж, оноо авахын тулд нэвтэрнэ үү.
+              </p>
+              <SignInButton mode="modal">
+                <button className="press mt-3 min-h-12 w-full rounded-2xl bg-brand-600 text-[15px] font-extrabold text-white shadow-brand hover:bg-brand-700">
+                  Google-ээр нэвтрэх
+                </button>
+              </SignInButton>
+            </div>
+          )}
         </div>
       )}
     </article>
