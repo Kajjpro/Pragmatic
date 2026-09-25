@@ -27,6 +27,15 @@ const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 //   503 = ачаалалтай, 429 = лимит хэтэрсэн, 403 = энэ түлхүүрт эрх алга, 404 = ийм загвар алга
 const SKIP_CODES = [503, 429, 403, 404];
 
+// Энэ ажиллагааны үед хариулсан загваруудын нэр (scripts/precompute.ts "model" талбарт бичнэ)
+export const modelsUsed: string[] = [];
+
+function rememberModel(name: string) {
+  if (!modelsUsed.includes(name)) {
+    modelsUsed.push(name);
+  }
+}
+
 // ── ГОЛ ФУНКЦ: prompt илгээж, JSON хариу авна ──
 // Нэр нь "askGeminiJSON" хэвээр (бусад файлууд үүнийг дууддаг), гэхдээ Claude ч хариулж болно.
 // temperature: бага (0.2) = тогтвортой; бага зэрэг өндөр (0.6) = илүү сонирхолтой үг сонголт.
@@ -86,6 +95,7 @@ async function askGemini(prompt: string, model: string, temperature: number) {
     },
   });
   console.log(`AI хариулсан: Gemini (${model})`);
+  rememberModel(model);
   return parseJSON(response.text || "");
 }
 
@@ -118,6 +128,7 @@ async function askClaude(prompt: string) {
     }
   }
   console.log(`AI хариулсан: Claude (${CLAUDE_MODEL})`);
+  rememberModel(CLAUDE_MODEL);
   return parseJSON(text);
 }
 
