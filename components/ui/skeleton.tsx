@@ -1,24 +1,17 @@
 import { cn } from "@/lib/cn";
 
-// Ачаалж буйг харуулах саарал блок (globals.css дахь .skeleton).
+// Ачаалж буйг харуулах саарал блок. Байрлалыг урьдчилан эзэлдэг тул хуудас үсрэхгүй.
 export function Skeleton({ className }: { className?: string }) {
-  return (
-    <div
-      aria-hidden
-      className={cn("skeleton rounded-xl", className)}
-    />
-  );
+  return <div aria-hidden className={cn("skeleton rounded-md", className)} />;
 }
 
-// Картны ачаалалтын жишиг хэлбэр
-export function CardSkeleton() {
+// Жагсаалтын нэг мөрний ачаалалт
+export function RowSkeleton() {
   return (
-    <div className="rounded-3xl border border-ink-200 bg-white p-5 shadow-card">
-      <Skeleton className="h-9 w-9 rounded-full" />
-      <Skeleton className="mt-4 h-6 w-4/5" />
-      <Skeleton className="mt-2.5 h-4 w-full" />
+    <div className="rounded-lg border border-line bg-surface p-5">
+      <Skeleton className="h-4 w-24" />
+      <Skeleton className="mt-3 h-6 w-4/5" />
       <Skeleton className="mt-2 h-4 w-2/3" />
-      <Skeleton className="mt-5 h-12 w-full rounded-2xl" />
     </div>
   );
 }

@@ -1,151 +1,165 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AgeHook } from "@/components/home/age-hook";
-import { PhoneMockup } from "@/components/home/phone-mockup";
-import { EnginePreview } from "@/components/home/engine-preview";
-import { SiteFooter } from "@/components/shell/site-footer";
-import { getFeed } from "@/lib/feed";
+import { ArrowRight, BadgeCheck, BookOpenText, Vote } from "lucide-react";
+import { buttonClass } from "@/components/ui/button";
+import { Container } from "@/components/ui/page-header";
+import { DiffLegend, DiffText } from "@/components/law/diff-text";
+import { getPreviewClause } from "@/lib/law/public";
+import { getLiveStats } from "@/lib/stats";
+import type { WordPart } from "@/lib/law/types";
+import { formatDate, formatTime } from "@/lib/format";
 
-// Нүүр хуудсыг хуваалцахад гарах гарчиг, тайлбар
 export const metadata: Metadata = {
-  title: "Хууль 60 секундэд. Таамагла. Өөрчил.",
+  title: { absolute: "Хариу — Хууль таны амьдралыг өөрчилдөг" },
   description:
-    "Та УИХ-ыг хэдэн настайдаа анх мэдсэн бэ? Хуулийн өөрчлөлтийг 60 секундэд ойлгож, санал хураалтыг таамаглаж, саналаа хуульд тусга.",
+    "Улсын Их Хурал хуульд юу өөрчилж байгааг энгийнээр ойлгож, санал хураалтыг дагаж, саналаа өгөх платформ.",
   openGraph: {
-    siteName: "Хариу",
-    locale: "mn_MN",
-    type: "website",
-    title: "Хууль 60 секундэд. Таамагла. Өөрчил.",
-    description:
-      "Монгол Улсын Их Хурлыг залуучуудын өдөр тутмын дадал болгох платформ.",
+    title: "Хариу — Хууль таны амьдралыг өөрчилдөг",
+    description: "Хуулийн өөрчлөлтийг энгийнээр ойлгож, санал хураалтыг дагаж, саналаа өгөх платформ.",
   },
 };
 
-// ① ② ⑥ — бүтээгдэхүүний гурван алхам
+// Статистик 10 минут тутам шинэчлэгдэнэ (lib/stats.ts)
+export const revalidate = 600;
+
 const steps = [
   {
-    n: "①",
-    emoji: "📖",
-    title: "Ойлго",
-    line: "60 секундийн карт — хуулийн өөрчлөлт энгийн үгээр.",
+    icon: BookOpenText,
+    title: "Өнөөдрийн хууль",
+    line: "Нэг өөрчлөлтийг 60 секундэд: өмнө нь ямар байсан, ямар болох, танд юу хамаатай.",
     href: "/feed",
-    cta: "Карт үзэх",
+    cta: "Унших",
   },
   {
-    n: "②",
-    emoji: "🎯",
-    title: "Таамагла",
-    line: "Санал хураалт батлагдах эсэхийг таа, оноо цуглуул.",
+    icon: Vote,
+    title: "Таамаг",
+    line: "Санал хураалтын дүнг урьдчилан таамаглаж, бодит дүнтэй харьцуулна.",
     href: "/predict",
     cta: "Таамаглах",
   },
   {
-    n: "⑥",
-    emoji: "🏛️",
-    title: "Өөрчил",
-    line: "Санал чинь хуульд тусгагдвал тэмдэг авна.",
+    icon: BadgeCheck,
+    title: "Хууль өөрчилсөн иргэн",
+    line: "Таны санал хуульд тусгагдвал бодит нөлөөний гэрчилгээ авна.",
     href: "/me",
-    cta: "Миний нөлөө",
+    cta: "Миний оролцоо",
   },
 ];
 
+
 export default async function HomePage() {
-  // Утасны макетад бодит фийдийн эхний 3 картыг харуулна.
-  // DB бэлэн биш байсан ч нүүр хуудас унахгүй — макетыг л нуух болно.
-  const previewCards = (await getFeed("ALL").catch(() => [])).slice(0, 3);
+  const [stats, preview] = await Promise.all([
+    getLiveStats(),
+    getPreviewClause().catch(() => null),
+  ]);
+
+  const facts = [
+    stats.activeProjects !== null && {
+      value: stats.activeProjects.toLocaleString("mn-MN"),
+      label: "LawForum дээр идэвхтэй төсөл",
+      source: "LawForum",
+    },
+    stats.citizenComments !== null && {
+      value: stats.citizenComments.toLocaleString("mn-MN"),
+      label: "Иргэдийн өгсөн санал",
+      source: "Хариу",
+    },
+    stats.lastVoteDate !== null && {
+      value: formatDate(new Date(stats.lastVoteDate)),
+      label: "Сүүлийн санал хураалт",
+      source: "УИХ-ын санал хураалт",
+    },
+  ].filter((f): f is { value: string; label: string; source: string } => Boolean(f));
 
   return (
-    <div className="flex flex-col">
-      {/* ── 1-Р ХЭСЭГ: ДЭГЭЭ ─────────────────────────────── */}
-      <section className="chrome-brand relative overflow-hidden">
-        <div className="grain" aria-hidden />
-        <div
-          className={
-            previewCards.length > 0
-              ? "relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.1fr_auto] lg:gap-14 lg:py-24"
-              : "relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:py-24"
-          }
-        >
-          <AgeHook />
-          {previewCards.length > 0 ? (
-            <div className="flex justify-center lg:justify-end">
-              <PhoneMockup cards={previewCards} />
+    <>
+      {/* Нүүр хэсэг */}
+      <section className="border-b border-line bg-surface">
+        <Container className="py-14 sm:py-20">
+          <h1 className="max-w-3xl text-[32px] font-bold leading-tight sm:text-[44px]">
+            Хууль таны амьдралыг өөрчилдөг. Та түүнийг мэдэх үү?
+          </h1>
+          <p className="mt-4 max-w-2xl text-[18px] text-muted">
+            Улсын Их Хурал хуульд юу өөрчилж байгааг энгийн үгээр уншиж, санал хураалтыг дагаж, саналаа хэлэлцүүлэгт илгээнэ үү.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link href="/feed" className={buttonClass("primary", "lg")}>
+              Өнөөдрийн хуулийг унших
+            </Link>
+            <Link href="/bills" className={buttonClass("secondary", "lg")}>
+              Хуулийн өөрчлөлтүүдийг харах
+            </Link>
+          </div>
+
+          {facts.length > 0 ? (
+            <div className="mt-12">
+              <dl className="grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-3">
+                {facts.map((f) => (
+                  <div key={f.label} className="bg-surface px-5 py-4">
+                    <dt className="text-[14px] text-muted">{f.label}</dt>
+                    <dd className="mt-1 font-serif text-[26px] font-bold tabular-nums text-heading">{f.value}</dd>
+                    <dd className="mt-1 text-[12.5px] text-muted">Эх сурвалж: {f.source}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-2 text-[12.5px] text-muted">
+                Сүүлд шинэчилсэн: {formatTime(new Date(stats.updatedAt))} (10 минут тутам шинэчлэгдэнэ)
+              </p>
             </div>
           ) : null}
-        </div>
+        </Container>
       </section>
 
-      {/* ── 2-Р ХЭСЭГ: 3 АЛХАМ ───────────────────────────── */}
-      <section className="bg-white py-14 sm:py-20">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink-950 sm:text-[36px]">
-            Гурван алхам, нэг дадал
-          </h2>
-          <p className="mt-2 max-w-xl text-[16px] leading-relaxed text-ink-600 sm:text-[17px]">
-            Өдөрт нэг карт. Долоо хоногт нэг таамаг. Саналаа хуульд тусга.
-          </p>
-
-          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* Хэрхэн ажилладаг вэ */}
+      <section>
+        <Container className="py-14">
+          <h2 className="text-[26px] font-bold">Хэрхэн ажилладаг вэ</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
             {steps.map((s) => (
               <Link
                 key={s.href}
                 href={s.href}
-                className="card-lift group flex flex-col rounded-3xl border border-ink-200 bg-white p-6 shadow-card hover:border-brand-300 hover:shadow-lift"
+                className="group flex flex-col rounded-lg border border-line bg-surface p-5 transition-colors hover:border-primary"
               >
-                <div className="flex items-center gap-3">
-                  <span
-                    className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-50 text-[28px]"
-                    aria-hidden
-                  >
-                    {s.emoji}
-                  </span>
-                  <span className="text-[22px] font-extrabold text-brand-300" aria-hidden>
-                    {s.n}
-                  </span>
-                </div>
-                <h3 className="mt-4 text-[22px] font-extrabold tracking-tight text-ink-950">
-                  {s.title}
-                </h3>
-                <p className="mt-2 flex-1 text-[15.5px] leading-relaxed text-ink-600">
-                  {s.line}
-                </p>
-                <span className="mt-5 inline-flex items-center gap-1.5 text-[15px] font-extrabold text-brand-700 transition-transform group-hover:translate-x-0.5">
-                  {s.cta} <span aria-hidden>→</span>
+                <s.icon aria-hidden className="h-6 w-6 text-heading" strokeWidth={1.75} />
+                <h3 className="mt-3 text-[19px] font-bold">{s.title}</h3>
+                <p className="mt-1.5 flex-1 text-[15.5px] text-muted">{s.line}</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-[15px] font-semibold text-action">
+                  {s.cta} <ArrowRight aria-hidden className="h-4 w-4" />
                 </span>
               </Link>
             ))}
           </div>
-        </div>
+        </Container>
       </section>
 
-      {/* ── 3-Р ХЭСЭГ: ХӨДӨЛГҮҮР ─────────────────────────── */}
-      <section className="bg-ink-50 py-14 sm:py-20">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-14">
-          <div>
-            <span className="inline-flex items-center rounded-full bg-brand-100 px-3 py-1 text-[12.5px] font-extrabold uppercase tracking-[0.1em] text-brand-800">
-              Ард нь ажилладаг хөдөлгүүр
-            </span>
-            <h2 className="mt-4 text-[26px] font-extrabold leading-tight tracking-tight text-ink-950 sm:text-[36px]">
-              Энэ бол зүгээр нэг иргэний апп биш
-            </h2>
-            <p className="mt-3 max-w-lg text-[16.5px] leading-relaxed text-ink-700 sm:text-[17.5px]">
-              Залуучуудын санал шүүгдэж, бүлэглэгдэж УИХ-ын ажилтанд очдог.
-              Ажилтан заалт бүрийн өөрчлөлтийг үг тутмаар харьцуулж, бүлэг
-              тутамд нэг хариу бичнэ.
+      {/* Бодит харьцуулалтын жишээ */}
+      {preview ? (
+        <section className="border-t border-line bg-surface">
+          <Container className="py-14">
+            <h2 className="text-[26px] font-bold">Өөрчлөлтийг үг бүрээр нь</h2>
+            <p className="mt-2 max-w-2xl text-muted">
+              Хуулийн төсөл одоогийн хуулийн аль үгийг хасаж, юу нэмж байгааг автоматаар тодруулна.
             </p>
-            <Link
-              href="/staff"
-              className="press mt-6 inline-flex min-h-12 items-center gap-2 rounded-2xl border-2 border-ink-300 bg-white px-5 text-[15px] font-extrabold text-ink-900 hover:border-brand-400 hover:text-brand-700"
-            >
-              Ажилтны ширээг үзэх →
-            </Link>
-          </div>
-
-          <EnginePreview />
-        </div>
-      </section>
-
-      <SiteFooter />
-    </div>
+            <article className="mt-6 rounded-lg border border-line p-5">
+              <p className="text-[14px] text-muted">
+                {preview.project.title} · {preview.number}-р заалт
+              </p>
+              <DiffText parts={preview.diff as unknown as WordPart[]} className="mt-2" />
+              {preview.what ? <p className="mt-3 border-t border-line pt-3 text-[15.5px] text-fg">{preview.what}</p> : null}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <DiffLegend />
+                <Link
+                  href={`/bills/${preview.project.id}#clause-${preview.number}`}
+                  className="inline-flex items-center gap-1 text-[15px] font-semibold text-action"
+                >
+                  Бүтэн харьцуулалтыг харах <ArrowRight aria-hidden className="h-4 w-4" />
+                </Link>
+              </div>
+            </article>
+          </Container>
+        </section>
+      ) : null}
+    </>
   );
 }

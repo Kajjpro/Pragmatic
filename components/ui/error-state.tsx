@@ -1,11 +1,12 @@
 "use client";
 
+import { AlertCircle } from "lucide-react";
 import { Button } from "./button";
 
-// Алдаа гарсан үеийн төлөв. retry өгвөл "Дахин оролдох" товч гарна.
+// Алдааны төлөв: энгийн тайлбар + "Дахин оролдох".
 export function ErrorState({
-  title = "Алдаа гарлаа",
-  description = "Өгөгдлийг ачаалж чадсангүй. Түр хүлээгээд дахин оролдоно уу.",
+  title = "Мэдээллийг ачаалж чадсангүй",
+  description = "Түр хүлээгээд дахин оролдоно уу.",
   retry,
 }: {
   title?: string;
@@ -13,19 +14,12 @@ export function ErrorState({
   retry?: () => void;
 }) {
   return (
-    <div
-      role="alert"
-      className="flex flex-col items-center justify-center rounded-3xl border-2 border-bad-100 bg-bad-50 px-6 py-12 text-center"
-    >
-      <div className="grid h-14 w-14 place-items-center rounded-full bg-white text-2xl shadow-soft">
-        <span aria-hidden>⚠️</span>
-      </div>
-      <h3 className="mt-4 text-[18px] font-bold text-bad-800">{title}</h3>
-      <p className="mt-2 max-w-sm text-[15px] leading-relaxed text-ink-700">
-        {description}
-      </p>
+    <div role="alert" className="flex flex-col items-center rounded-lg border border-line bg-surface px-6 py-10 text-center">
+      <AlertCircle aria-hidden className="h-8 w-8 text-bad-fg" strokeWidth={1.5} />
+      <h3 className="mt-3 text-[18px] font-bold">{title}</h3>
+      <p className="mt-1.5 max-w-md text-[15px] text-muted">{description}</p>
       {retry ? (
-        <Button variant="outline" size="sm" onClick={retry} className="mt-5">
+        <Button variant="secondary" size="sm" onClick={retry} className="mt-5">
           Дахин оролдох
         </Button>
       ) : null}

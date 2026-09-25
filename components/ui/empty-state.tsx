@@ -1,28 +1,23 @@
 import type { ReactNode } from "react";
+import { Inbox, type LucideIcon } from "lucide-react";
 
-// Өгөгдөл байхгүй үеийн төлөв.
+// Өгөгдөл байхгүй үеийн төлөв: яагаад хоосон байгааг ба дараагийн алхмыг хэлнэ.
 export function EmptyState({
-  emoji = "📭",
+  icon: Icon = Inbox,
   title,
   description,
   action,
 }: {
-  emoji?: string;
+  icon?: LucideIcon;
   title: string;
   description?: string;
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-ink-200 bg-ink-50 px-6 py-12 text-center">
-      <div className="grid h-14 w-14 place-items-center rounded-full bg-white text-2xl shadow-soft">
-        <span aria-hidden>{emoji}</span>
-      </div>
-      <h3 className="mt-4 text-[18px] font-bold text-ink-900">{title}</h3>
-      {description ? (
-        <p className="mt-2 max-w-sm text-[15px] leading-relaxed text-ink-600">
-          {description}
-        </p>
-      ) : null}
+    <div className="flex flex-col items-center rounded-lg border border-dashed border-line-strong bg-surface px-6 py-10 text-center">
+      <Icon aria-hidden className="h-8 w-8 text-muted" strokeWidth={1.5} />
+      <h3 className="mt-3 text-[18px] font-bold">{title}</h3>
+      {description ? <p className="mt-1.5 max-w-md text-[15px] text-muted">{description}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );

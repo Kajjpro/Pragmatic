@@ -60,7 +60,7 @@ export function FilteredList({
         >
           ▸
         </span>
-        <span className="text-[16px] font-extrabold text-ink-900">
+        <span className="text-[16px] font-bold text-ink-900">
           Шүүгдсэн ({items.length})
         </span>
         <span className="ml-auto text-[14px] font-semibold text-ink-600">
@@ -95,7 +95,7 @@ export function FilteredList({
                 <div className="mt-2.5 flex justify-end">
                   {restored ? (
                     <span className="text-[14px] font-bold text-ok-800">
-                      ✓ Буцаагдсан
+                      Буцаагдсан
                     </span>
                   ) : (
                     <button

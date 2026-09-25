@@ -1,19 +1,7 @@
-import { cn } from "@/lib/cn";
-
-export function Kbd({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+// Гарын товчлуурын заавар (ажилтны хэсэгт: ↑ ↓ A)
+export function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd
-      className={cn(
-        "inline-flex min-w-[22px] items-center justify-center rounded-md border border-ink-100 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-700 shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)]",
-        className,
-      )}
-    >
+    <kbd className="inline-flex min-w-[22px] items-center justify-center rounded border border-line-strong bg-surface px-1.5 py-0.5 font-sans text-[12px] font-medium text-muted">
       {children}
     </kbd>
   );

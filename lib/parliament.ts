@@ -5,6 +5,8 @@
 //
 // ⚠ Хариуны талбаруудын нэрийг (readAgenda, readVote доторх) API-ийн баримт бичигтэй тулгаж баталгаажуулах.
 
+import "server-only"; // зөвхөн серверээс (API түлхүүр хөтөч рүү гарахгүй)
+
 export class ParliamentApiError extends Error {}
 
 // Хэлэлцэх асуудал (agenda)

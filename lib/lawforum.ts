@@ -1,7 +1,8 @@
 // lawforum.parliament.mn API client
 // Серверээс дуудна (route handler / server action). Browser-оос дуудвал CORS-оор хаагдаж магадгүй.
 
-const BASE = "https://lawforum.parliament.mn/lawforumapi/api/v1";
+// .env: LAWFORUM_API_URL (анхдагч https://lawforum.parliament.mn/LawForumAPI)
+const BASE = `${(process.env.LAWFORUM_API_URL || "https://lawforum.parliament.mn/LawForumAPI").replace(/\/+$/, "")}/api/v1`;
 
 export type ProjectStatistics = {
   hits: number;
@@ -71,6 +72,7 @@ async function get<T>(
   const res = await fetch(url, {
     cache: "no-store",
     headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(10_000), // LawForum удаан бол хүлээхгүй
   });
   if (!res.ok) throw new Error(`lawforum ${path} → ${res.status}`);
   return res.json() as Promise<T>;

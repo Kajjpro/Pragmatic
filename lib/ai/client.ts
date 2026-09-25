@@ -20,8 +20,12 @@ import Anthropic from "@anthropic-ai/sdk";
 // 1. Claude-ийн загварын нэр
 const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
 
-// 2. Gemini-тэй холбогдох
-const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// 2. Gemini-тэй холбогдох — анх хэрэгтэй үед л үүсгэнэ (build үед түлхүүргүй анхааруулга гаргахгүй)
+let gemini: GoogleGenAI | null = null;
+function getGemini(): GoogleGenAI {
+  gemini ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  return gemini;
+}
 
 // Эдгээр алдааны кодоор дараагийн загвар руу шууд шилжинэ:
 //   503 = ачаалалтай, 429 = лимит хэтэрсэн, 403 = энэ түлхүүрт эрх алга, 404 = ийм загвар алга
@@ -86,7 +90,7 @@ export function getGeminiModels(): string[] {
 
 // ── Нэг Gemini загвараас НЭГ удаа асуух (хүлээхгүй, дахин оролдохгүй) ──
 async function askGemini(prompt: string, model: string, temperature: number) {
-  const response = await gemini.models.generateContent({
+  const response = await getGemini().models.generateContent({
     model: model,
     contents: prompt,
     config: {

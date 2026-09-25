@@ -67,7 +67,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
           flash(data?.error ?? "Хадгалахад алдаа гарлаа");
           return;
         }
-        flash(next ? "✓ Заалт батлагдлаа" : "Батлалт цуцлагдав");
+        flash(next ? "Заалт батлагдлаа" : "Батлалт цуцлагдав");
       } catch {
         setApproved((s) => ({ ...s, [id]: !next }));
         flash("Сүлжээний алдаа. Дахин оролдоно уу.");
@@ -86,7 +86,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
         flash(data?.error ?? "Бүлэглэхэд алдаа гарлаа");
         return;
       }
-      flash("✓ Санал шүүгдэж, бүлэглэгдлээ");
+      flash("Санал шүүгдэж, бүлэглэгдлээ");
       router.refresh();
     } catch {
       flash("Сүлжээний алдаа. Дахин оролдоно уу.");
@@ -134,10 +134,10 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
       <section className="rounded-3xl border border-ink-200 bg-white p-6 shadow-card">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="max-w-4xl">
-            <div className="text-[14px] font-extrabold uppercase tracking-[0.12em] text-brand-700">
+            <div className="text-[14px] font-bold uppercase tracking-[0.12em] text-brand-700">
               Ажлын ширээ
             </div>
-            <h1 className="mt-1.5 text-[30px] font-extrabold leading-tight tracking-tight text-ink-950 xl:text-[36px]">
+            <h1 className="mt-1.5 text-[30px] font-bold leading-tight tracking-tight text-ink-950 xl:text-[36px]">
               {bill.title}
             </h1>
             {bill.reasonText ? (
@@ -149,7 +149,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
 
           <a
             href={`/api/bills/${bill.id}/word`}
-            className="press inline-flex min-h-14 items-center gap-2 rounded-2xl bg-brand-600 px-6 text-[17px] font-extrabold text-white shadow-brand hover:bg-brand-700"
+            className="press inline-flex min-h-14 items-center gap-2 rounded-2xl bg-brand-600 px-6 text-[17px] font-bold text-white shadow-brand hover:bg-brand-700"
           >
             <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5" aria-hidden>
               <path
@@ -189,7 +189,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
               onClick={() => setTab(t)}
               aria-current={tab === t ? "page" : undefined}
               className={cn(
-                "press relative -mb-0.5 min-h-14 px-5 text-[19px] font-extrabold",
+                "press relative -mb-0.5 min-h-14 px-5 text-[19px] font-bold",
                 tab === t ? "text-brand-700" : "text-ink-600 hover:text-ink-900",
               )}
             >
@@ -223,7 +223,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                   onClick={() => setFilter(f.key)}
                   aria-pressed={filter === f.key}
                   className={cn(
-                    "press inline-flex min-h-12 items-center gap-2 rounded-2xl border-2 px-5 text-[16px] font-extrabold",
+                    "press inline-flex min-h-12 items-center gap-2 rounded-2xl border-2 px-5 text-[16px] font-bold",
                     filter === f.key
                       ? "border-brand-600 bg-brand-600 text-white shadow-brand"
                       : "border-ink-200 bg-white text-ink-700 hover:border-brand-400 hover:text-brand-700",
@@ -232,7 +232,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                   {f.label}
                   <span
                     className={cn(
-                      "rounded-full px-2 text-[14px] font-extrabold tabular-nums",
+                      "rounded-full px-2 text-[14px] font-bold tabular-nums",
                       filter === f.key ? "bg-white/20 text-white" : "bg-ink-100 text-ink-700",
                     )}
                   >
@@ -266,19 +266,19 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                     <header className="flex flex-wrap items-center gap-3">
                       <span
                         className={cn(
-                          "grid h-9 w-9 place-items-center rounded-xl text-[16px] font-extrabold tabular-nums",
+                          "grid h-9 w-9 place-items-center rounded-xl text-[16px] font-bold tabular-nums",
                           isActive ? "bg-brand-600 text-white" : "bg-ink-100 text-ink-700",
                         )}
                       >
                         {i + 1}
                       </span>
-                      <span className="rounded-lg bg-brand-50 px-3 py-1 font-mono text-[16px] font-extrabold text-brand-700">
+                      <span className="rounded-lg bg-brand-50 px-3 py-1 font-mono text-[16px] font-bold text-brand-700">
                         {c.number}
                       </span>
                       <ChangeBadge type={c.changeType} />
                       {isApproved ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-ok-100 px-3 py-1 text-[14px] font-extrabold text-ok-800 ring-1 ring-inset ring-ok-500/40">
-                          ✓ Батлагдсан
+                        <span className="inline-flex items-center gap-1 rounded-full bg-ok-100 px-3 py-1 text-[14px] font-bold text-ok-800 ring-1 ring-inset ring-ok-500/40">
+                          Батлагдсан
                         </span>
                       ) : null}
                       <button
@@ -288,7 +288,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                           toggleApprove(c.id);
                         }}
                         className={cn(
-                          "press ml-auto min-h-14 rounded-2xl px-7 text-[17px] font-extrabold",
+                          "press ml-auto min-h-14 rounded-2xl px-7 text-[17px] font-bold",
                           isApproved
                             ? "bg-ink-100 text-ink-700 hover:bg-ink-200"
                             : "bg-brand-600 text-white shadow-brand hover:bg-brand-700",
@@ -304,7 +304,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
 
                     {c.sourceQuote ? (
                       <div className="mt-4 rounded-2xl border-l-4 border-brand-600 bg-brand-50 p-4 text-[16px] italic leading-relaxed text-ink-900">
-                        <span className="mr-2 text-[13px] font-extrabold uppercase not-italic tracking-wider text-brand-700">
+                        <span className="mr-2 text-[13px] font-bold uppercase not-italic tracking-wider text-brand-700">
                           Эх сурвалж
                         </span>
                         «{c.sourceQuote}»
@@ -320,7 +320,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
         <div className="flex flex-col gap-7">
           {/* Юүлүүр — энэ бол "бид зүгээр нэг иргэний апп биш" гэдгийн баталгаа */}
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-ink-200 bg-white p-6 shadow-card">
-            <div className="flex flex-wrap items-center gap-3 text-[20px] font-extrabold text-ink-950 xl:text-[24px]">
+            <div className="flex flex-wrap items-center gap-3 text-[20px] font-bold text-ink-950 xl:text-[24px]">
               <Funnel value={totalComments} label="санал" />
               <span aria-hidden className="text-ink-300">
                 →
@@ -336,7 +336,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
               type="button"
               onClick={runGrouping}
               disabled={grouping}
-              className="press inline-flex min-h-14 items-center gap-2 rounded-2xl bg-brand-600 px-6 text-[17px] font-extrabold text-white shadow-brand hover:bg-brand-700 disabled:opacity-60"
+              className="press inline-flex min-h-14 items-center gap-2 rounded-2xl bg-brand-600 px-6 text-[17px] font-bold text-white shadow-brand hover:bg-brand-700 disabled:opacity-60"
             >
               <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5" aria-hidden>
                 <path
@@ -367,7 +367,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
               .map((c) => (
                 <section key={c.id} className="flex flex-col gap-4">
                   <header className="flex flex-wrap items-center gap-3 border-b-2 border-ink-100 pb-3">
-                    <span className="rounded-lg bg-brand-50 px-3 py-1 font-mono text-[16px] font-extrabold text-brand-700">
+                    <span className="rounded-lg bg-brand-50 px-3 py-1 font-mono text-[16px] font-bold text-brand-700">
                       {c.number}
                     </span>
                     <span className="text-[17px] font-bold text-ink-700">
@@ -465,10 +465,10 @@ function Metric({
   }[tone];
   return (
     <div className={cn("rounded-2xl px-5 py-3 text-center", c)}>
-      <div className="text-[13px] font-extrabold uppercase tracking-wider opacity-80">
+      <div className="text-[13px] font-bold uppercase tracking-wider opacity-80">
         {label}
       </div>
-      <div className="text-[28px] font-extrabold tabular-nums">{value}</div>
+      <div className="text-[28px] font-bold tabular-nums">{value}</div>
     </div>
   );
 }
