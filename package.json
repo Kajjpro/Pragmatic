@@ -6,13 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate",
+    "test": "tsx --test lib/law/*.test.ts",
+    "test:db": "DATABASE_SCHEMA=test_scratch tsx --test lib/law/db.test.ts",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.7",
     "@google/genai": "^2.24.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "diff": "^9.0.0",
+    "docx": "^9.7.2",
     "dotenv": "^18.0.3",
     "next": "16.3.6",
     "pg": "^8.23.0",
