@@ -1,5 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
+import {
+  Show,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+} from "@clerk/nextjs";
 import { DEMO_MODE, todayLabel } from "@/lib/stub/context";
 
 const primaryNav = [
@@ -59,7 +65,7 @@ export function SiteHeader() {
           />
         </Link>
 
-        <nav className="flex items-center justify-end gap-7 text-[11.5px] font-medium tracking-[0.09em]">
+        <nav className="flex items-center justify-end gap-6 text-[11.5px] font-medium tracking-[0.09em]">
           {rightNav.map((item) => (
             <Link
               key={item.label}
@@ -69,16 +75,34 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          <Link
-            href="/me"
-            aria-label="Миний оролцоо"
-            className="ml-2 grid h-7 w-7 place-items-center rounded-full border border-white/25 text-white/85 transition hover:border-white hover:text-white"
-          >
-            <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5">
-              <circle cx="10" cy="8" r="3" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M4 17c1-3 4-4 6-4s5 1 6 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </Link>
+
+          <div className="ml-1 flex items-center gap-2">
+            <Show when="signed-out">
+              <SignInButton mode="modal">
+                <button className="rounded-full border border-white/25 px-3 py-1 text-[11px] font-medium text-white/90 transition hover:border-white hover:text-white">
+                  Нэвтрэх
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="rounded-full bg-gold-400 px-3 py-1 text-[11px] font-semibold text-parliament-950 transition hover:bg-gold-500">
+                  Бүртгүүлэх
+                </button>
+              </SignUpButton>
+            </Show>
+            <Show when="signed-in">
+              <Link
+                href="/me"
+                className="hidden text-[11.5px] font-semibold text-white/85 transition hover:text-white md:inline"
+              >
+                Миний оролцоо
+              </Link>
+              <UserButton
+                appearance={{
+                  elements: { avatarBox: "h-8 w-8 ring-2 ring-white/25" },
+                }}
+              />
+            </Show>
+          </div>
         </nav>
       </div>
 
