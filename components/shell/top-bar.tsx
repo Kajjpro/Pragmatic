@@ -6,17 +6,15 @@ import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/cn";
 import { navItems } from "./nav-items";
 import { StreakFlame } from "@/components/ui/streak-flame";
+import { useMe } from "./me-context";
+import { NotificationBell } from "./notification-bell";
 
 // Дээд самбар. Компьютерт үндсэн цэс, гар утсанд зөвхөн лого + оноо.
-// points/streak нь нэвтэрсэн хэрэглэгчийнх; Dev 1-ийн GET /api/me бэлэн
-// болмогц энд дамжуулна. Одоогоор дамжуулаагүй бол харуулахгүй.
-export function TopBar({
-  points,
-  streak,
-}: {
-  points?: number;
-  streak?: number;
-}) {
+// Оноо, streak, мэдэгдэл нь GET /api/me-ээс (MeProvider дамжуулна).
+export function TopBar() {
+  const { me } = useMe();
+  const points = me?.points;
+  const streak = me?.streak;
   const path = usePathname() ?? "/";
 
   return (
@@ -58,12 +56,13 @@ export function TopBar({
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5">
+          <NotificationBell />
           {typeof streak === "number" ? (
             <StreakFlame days={streak} size="sm" />
           ) : null}
           {typeof points === "number" ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-point-100 px-2.5 py-1 text-[13px] font-extrabold tabular-nums text-point-700">
+            <span className="hidden items-center gap-1 rounded-full bg-point-100 px-2.5 py-1 text-[13px] font-extrabold tabular-nums text-point-700 sm:inline-flex">
               {points.toLocaleString("mn-MN")} оноо
             </span>
           ) : null}
