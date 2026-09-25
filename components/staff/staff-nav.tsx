@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 
 const items = [
   { href: "/staff", label: "Миний төслүүд" },
+  { href: "/staff/bills/new", label: "Шинэ төсөл" },
 ];
 
 export function StaffNav() {
