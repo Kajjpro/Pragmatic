@@ -123,13 +123,19 @@ export function checkCard(answer: unknown, sourceText: string): { card: Card | n
     return { card: null, problem: `оролтын текстэд байхгүй тоо: ${missing.join(", ")}` };
   }
 
-  // 6. personas: зөвшөөрөгдсөн нэрсээс ядаж нэг
+  // 6. Төвийг сахих: hook, youMeaning-д хүний нэр ("Б.Энх-Амгалан" гэх мэт) байж болохгүй.
+  //    Карт хуулийн агуулгын тухай байна, санаачилсан гишүүний тухай биш.
+  if (/[А-ЯӨҮЁ]\.\s?[А-ЯӨҮЁ][а-яөүё]/.test(hook + " " + youMeaning)) {
+    return { card: null, problem: "hook эсвэл youMeaning-д хүний нэр байна" };
+  }
+
+  // 7. personas: зөвшөөрөгдсөн нэрсээс ядаж нэг
   const personas = readPersonas(result.personas);
   if (personas.length === 0) {
     return { card: null, problem: "personas хоосон эсвэл буруу нэртэй" };
   }
 
-  // 7. emoji буруу бол анхдагч emoji тавина (үүнээс болж картыг хаяхгүй)
+  // 8. emoji буруу бол анхдагч emoji тавина (үүнээс болж картыг хаяхгүй)
   const emoji = readEmoji(result.emoji);
 
   return { card: { emoji, hook, youMeaning, personas, sourceQuote: quote }, problem: "" };

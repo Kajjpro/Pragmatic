@@ -57,6 +57,9 @@ const TEEN_TOPICS = [
   "эрүүл мэнд", "эмнэлэг", "эмийн", "спорт", "гэр бүл",
 ];
 
+// Нэрэнд нь эдгээр үг байвал алгасна: тайлан, олон улсын гэрээ, худалдан авалт нь сурагчдад карт болохгүй
+const SKIP_TOPICS = ["тайлан", "соёрхон батлах", "хэлэлцээр", "гэрээ", "худалдан авах", "зээл"];
+
 function getArg(name: string): string {
   const found = args.find((a) => a.startsWith(`--${name}=`));
   return found ? found.split("=")[1] : "";
@@ -231,14 +234,36 @@ async function buildLawforumBills(): Promise<{ bills: PrecomputedBill[]; cards: 
     .sort((a, b) => b.score - a.score || (b.project.publishedOnUtc || "").localeCompare(a.project.publishedOnUtc || ""));
   console.log(`   ${projects.length} төслөөс ${candidates.length} нь сэдэвт тохирч байна`);
 
+  // Демо төслийг (data/source.txt) дахин BILL карт болгохгүй
+  const demoUrl = existsSync("data/source.txt") ? readData("source.txt") : "";
+  // Ижил нэртэй төслийг (жишээ нь нэг хуулийн хоёр хувилбар) нэг л удаа авна
+  const seenTitles: string[] = [];
+
   // c. Нэг нэгээр нь дэлгэрэнгүйг авч карт хийнэ
   for (const { project } of candidates) {
     if (cards.length >= MAX_BILLS) {
       break;
     }
-    const detail = await getProject(project.id);
+    if (lawforumPageUrl(project.id, null) === demoUrl) {
+      continue;
+    }
+    const simpleTitle = simplifyTitle(project.title || "");
+    if (seenTitles.includes(simpleTitle)) {
+      console.log(`── lf-${project.id}: алгаслаа (ижил нэртэй төсөл аль хэдийн орсон)`);
+      continue;
+    }
+    seenTitles.push(simpleTitle);
+    const detail = await getProjectSafe(project.id);
+    if (detail === null) {
+      console.log(`── lf-${project.id}: алгаслаа (lawforum хариулсангүй)`);
+      continue;
+    }
     const title = (detail.title || "").trim();
-    const description = stripHtml(detail.description || "");
+    let description = stripHtml(detail.description || "");
+    // API-ийн description бараг үргэлж хоосон байдаг → нийтийн хуудаснаас төслийн текстийг авна
+    if (description.length < MIN_DESCRIPTION_LENGTH) {
+      description = await fetchBillTextFromPage(project.id);
+    }
     console.log(`── lf-${project.id}: ${title.slice(0, 70)}`);
     if (description.length < MIN_DESCRIPTION_LENGTH) {
       console.log(`   алгаслаа: тайлбар ${description.length} тэмдэгт (хэт богино)`);
@@ -259,16 +284,32 @@ async function buildLawforumBills(): Promise<{ bills: PrecomputedBill[]; cards: 
   return { bills, cards };
 }
 
-// Төслийн нэрэнд сэдвийн хэдэн түлхүүр үг байгааг тоолно
+// Төслийн нэрэнд сэдвийн хэдэн түлхүүр үг байгааг тоолно. Алгасах сэдэв байвал 0.
 function topicScore(title: string): number {
   const lower = title.toLowerCase();
+  for (const skip of SKIP_TOPICS) {
+    if (lower.includes(skip)) {
+      return 0;
+    }
+  }
+  // "ажил" нь "үйл ажиллагаа" гэдэгт андуурагдахгүйн тулд "ажиллагаа"-г тооцохгүй
+  const cleaned = lower.replace(/ажиллагаа/g, "");
   let score = 0;
   for (const topic of TEEN_TOPICS) {
-    if (lower.includes(topic)) {
+    if (cleaned.includes(topic)) {
       score++;
     }
   }
   return score;
+}
+
+// Нэрийг харьцуулахад бэлдэнэ: жижиг үсэг, "хууль"/"тухай" үггүй, зөвхөн үсэг.
+// "ЭРҮҮЛ МЭНДИЙН АЖИЛТНЫ ТУХАЙ" ба "ЭРҮҮЛ МЭНДИЙН АЖИЛТНЫ ТУХАЙ ХУУЛЬ" → ижил
+function simplifyTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/хууль|тухай/g, "")
+    .replace(/[^\p{L}]+/gu, "");
 }
 
 // lawforum-ын хуудасны хаяг. slugUrl бүтэн хаяг бол түүнийг, үгүй бол id-аар.
@@ -278,6 +319,103 @@ function lawforumPageUrl(id: number, slugUrl: string | null): string {
     return slugUrl;
   }
   return `https://lawforum.parliament.mn/project/${id}`;
+}
+
+// lawforum сервер заримдаа хариулахгүй (timeout) байдаг → 3 удаа оролдоно, бүтэхгүй бол null
+const LAWFORUM_TRIES = 3;
+
+async function getProjectSafe(id: number) {
+  for (let attempt = 1; attempt <= LAWFORUM_TRIES; attempt++) {
+    try {
+      return await getProject(id);
+    } catch (error) {
+      console.log(`   lawforum хариулсангүй (${attempt}-р оролдлого): ${String(error).slice(0, 80)}`);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
+  return null;
+}
+
+// Хуудсыг татна. Бүтэхгүй бол 3 удаа оролдоод хоосон текст буцаана.
+async function fetchPageSafe(url: string): Promise<string> {
+  for (let attempt = 1; attempt <= LAWFORUM_TRIES; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        return await response.text();
+      }
+    } catch (error) {
+      console.log(`   хуудас татагдсангүй (${attempt}-р оролдлого): ${String(error).slice(0, 80)}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  }
+  return "";
+}
+
+// lawforum-ын нийтийн хуудаснаас төслийн албан ёсны текстийг (гарчиг + зүйлүүд) үг үсгээр нь авна.
+// Хуудасны бүтэц: "МОНГОЛ УЛСЫН ХУУЛЬ" → огноо → гарчиг → зүйлүүд → "Төслийн файлууд".
+// Ийм хэсэг олдохгүй бол (хуучин загварын хуудас, зөвхөн файлтай төсөл) хоосон текст буцаана.
+async function fetchBillTextFromPage(id: number): Promise<string> {
+  // 1. Хуудсыг татна
+  let html = await fetchPageSafe(lawforumPageUrl(id, null));
+  if (html === "") {
+    return "";
+  }
+
+  // 2. Script/style болон санал, like-ийн товчнуудыг хасна (тэдний тоо хуулийн текстэнд холилдохгүй)
+  html = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "");
+  html = html.replace(/<a href="\/(?:projectrefcomments|prca)\/[^"]*"[\s\S]*?<\/a>/g, "");
+
+  // 3. Мөр шилжүүлдэг тагуудыг мөр болгож, бусад тагийг хасна
+  html = html.replace(/<br\s*\/?>|<\/(?:div|p|li|h\d)>/gi, "\n");
+  const text = decodeEntities(html.replace(/<[^>]+>/g, ""));
+
+  // 4. Хоосон биш мөрүүд
+  const lines: string[] = [];
+  for (const raw of text.split("\n")) {
+    const line = raw.replace(/[ \t ]+/g, " ").trim();
+    if (line !== "") {
+      lines.push(line);
+    }
+  }
+
+  // 5. Албан ёсны хэсгийн эхлэл
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i] === "МОНГОЛ УЛСЫН ХУУЛЬ" || lines[i] === "МОНГОЛ УЛСЫН ИХ ХУРЛЫН ТОГТООЛ") {
+      start = i;
+      break;
+    }
+  }
+  if (start === -1) {
+    return "";
+  }
+
+  // 6. "Төслийн файлууд" хүртэлх мөрүүд (огнооны мөрийг алгасна)
+  const body: string[] = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    if (lines[i].startsWith("Төслийн файлууд")) {
+      break;
+    }
+    if (/^\d{4} оны .* өдөр/.test(lines[i])) {
+      continue;
+    }
+    body.push(lines[i]);
+  }
+  return body.join("\n");
+}
+
+// HTML-ийн тусгай тэмдэгтүүдийг (&amp; &quot; &#8220; &#x41C; ...) жирийн тэмдэгт болгоно.
+// lawforum кирилл үсгийг hex хэлбэрээр (&#x41C; = М) бичдэг.
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&amp;/g, "&");
 }
 
 // HTML-ийг цэвэр текст болгоно
