@@ -3,8 +3,8 @@ import { Award } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { badgeLabels, type Badge } from "@/lib/types";
 import { BadgeIcon } from "./badge-icon";
+import { formatDate } from "@/lib/format";
 
-const dateFormat = new Intl.DateTimeFormat("mn-MN", { year: "numeric", month: "long", day: "numeric" });
 
 // "Тэмдэг": авсан тэмдгүүд. "Хууль өөрчилсөн иргэн" бүр гэрчилгээний хуудастай.
 export function BadgeList({ badges }: { badges: Badge[] }) {
@@ -26,7 +26,7 @@ export function BadgeList({ badges }: { badges: Badge[] }) {
             <p className="font-semibold text-fg">{badgeLabels[b.type].title}</p>
             <p className="text-[14px] text-muted">
               {b.lawTitle ? `${b.lawTitle}${b.clauseNumber ? `, ${b.clauseNumber}-р заалт` : ""} · ` : ""}
-              {dateFormat.format(new Date(b.createdAt))}
+              {formatDate(new Date(b.createdAt))}
             </p>
           </div>
           {b.type === "LAW_CHANGER" ? (

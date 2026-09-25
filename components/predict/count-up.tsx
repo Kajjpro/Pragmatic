@@ -8,15 +8,13 @@ export function CountUp({ to, durationMs = 1400 }: { to: number; durationMs?: nu
   const [value, setValue] = useState(0);
 
   useEffect(() => {
+    // Хөдөлгөөн багасгах тохиргоотой бол 0 хугацаанд (эхний фрэймд) эцсийн тоо
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || to === 0) {
-      setValue(to);
-      return;
-    }
+    const duration = reduce ? 0 : durationMs;
     let frame = 0;
     const start = performance.now();
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / durationMs);
+      const t = duration === 0 ? 1 : Math.min(1, (now - start) / duration);
       setValue(Math.round(to * (1 - Math.pow(1 - t, 3))));
       if (t < 1) frame = requestAnimationFrame(tick);
     };

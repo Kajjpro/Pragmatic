@@ -12,8 +12,8 @@ import { buttonClass } from "@/components/ui/button";
 import { StageBar } from "@/components/law/stage-bar";
 import { NO_REASON } from "@/components/law/change-explain";
 import { BillComparison } from "@/components/law/bill-comparison";
+import { formatDate } from "@/lib/format";
 
-const dateFormat = new Intl.DateTimeFormat("mn-MN", { year: "numeric", month: "long", day: "numeric" });
 const MAX_KEY_CHANGES = 5;
 
 export async function generateMetadata({ params }: PageProps<"/bills/[id]">): Promise<Metadata> {
@@ -60,7 +60,7 @@ export default async function BillPage({ params }: PageProps<"/bills/[id]">) {
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] text-muted">
             {bill.typeTitle ? <span>{bill.typeTitle}</span> : null}
             {bill.categoryTitle ? <Pill>{bill.categoryTitle}</Pill> : null}
-            <span>Сүүлд шинэчилсэн: {dateFormat.format(new Date(bill.updatedAt))}</span>
+            <span>Сүүлд шинэчилсэн: {formatDate(new Date(bill.updatedAt))}</span>
             {bill.sourceUrl ? (
               <a href={bill.sourceUrl} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-action underline underline-offset-2">
                 Эх сурвалж: LawForum <ExternalLink aria-hidden className="h-3.5 w-3.5" />

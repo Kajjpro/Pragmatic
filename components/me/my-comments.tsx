@@ -6,8 +6,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClass } from "@/components/ui/button";
 import { filterStatusLabels } from "@/lib/labels";
 import type { MyComment } from "@/lib/types";
+import { formatShortDate } from "@/lib/format";
 
-const dateFormat = new Intl.DateTimeFormat("mn-MN", { year: "numeric", month: "2-digit", day: "2-digit" });
 
 // "Миний санал": заалт, миний текст, төлөв (Тусгасан/Тусгаагүй/Хүлээгдэж буй), ажлын албаны хариу, өмнө/дараа.
 export function MyComments({ comments }: { comments: MyComment[] }) {
@@ -37,7 +37,7 @@ export function MyComments({ comments }: { comments: MyComment[] }) {
                 {c.clause.billTitle}, {c.clause.number}-р заалт
               </Link>
               <time dateTime={c.createdAt} className="tabular-nums">
-                {dateFormat.format(new Date(c.createdAt))}
+                {formatShortDate(new Date(c.createdAt))}
               </time>
             </div>
 

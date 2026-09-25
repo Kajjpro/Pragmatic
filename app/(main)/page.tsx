@@ -7,6 +7,7 @@ import { DiffLegend, DiffText } from "@/components/law/diff-text";
 import { getPreviewClause } from "@/lib/law/public";
 import { getLiveStats } from "@/lib/stats";
 import type { WordPart } from "@/lib/law/types";
+import { formatDate, formatTime } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: { absolute: "Хариу — Хууль таны амьдралыг өөрчилдөг" },
@@ -45,8 +46,6 @@ const steps = [
   },
 ];
 
-const dateFormat = new Intl.DateTimeFormat("mn-MN", { year: "numeric", month: "long", day: "numeric" });
-const timeFormat = new Intl.DateTimeFormat("mn-MN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ulaanbaatar" });
 
 export default async function HomePage() {
   const [stats, preview] = await Promise.all([
@@ -66,7 +65,7 @@ export default async function HomePage() {
       source: "Хариу",
     },
     stats.lastVoteDate !== null && {
-      value: dateFormat.format(new Date(stats.lastVoteDate)),
+      value: formatDate(new Date(stats.lastVoteDate)),
       label: "Сүүлийн санал хураалт",
       source: "УИХ-ын санал хураалт",
     },
@@ -104,7 +103,7 @@ export default async function HomePage() {
                 ))}
               </dl>
               <p className="mt-2 text-[12.5px] text-muted">
-                Сүүлд шинэчилсэн: {timeFormat.format(new Date(stats.updatedAt))} (10 минут тутам шинэчлэгдэнэ)
+                Сүүлд шинэчилсэн: {formatTime(new Date(stats.updatedAt))} (10 минут тутам шинэчлэгдэнэ)
               </p>
             </div>
           ) : null}

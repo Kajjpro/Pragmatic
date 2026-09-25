@@ -8,7 +8,7 @@ import { MyPredictions } from "@/components/me/my-predictions";
 import { BadgeList } from "@/components/me/badge-list";
 import { LawChangerNotice } from "@/components/me/law-changer-notice";
 import { Container, PageHeader } from "@/components/ui/page-header";
-import { PageLoading } from "@/components/ui/page-loading";
+import { ListSkeleton } from "@/components/ui/page-loading";
 import { cn } from "@/lib/cn";
 
 // Нэг удаа харуулсан "Хууль өөрчилсөн иргэн" мэдэгдлийг төхөөрөмж дээр санана
@@ -35,7 +35,15 @@ export default function MePage() {
     setSeen(readSeenBadges());
   }, []);
 
-  if (!loaded) return <PageLoading rows={2} />;
+  if (!loaded)
+    return (
+      <Container className="max-w-3xl py-10">
+        <PageHeader title="Миний оролцоо" description="Таны санал, таамаг, тэмдэг." />
+        <div className="mt-6">
+          <ListSkeleton rows={2} />
+        </div>
+      </Container>
+    );
   if (!me) return <SignInPrompt />;
 
   const comments = me.comments ?? [];

@@ -5,7 +5,7 @@ import { Vote } from "lucide-react";
 import { Container, PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
-import { PageLoading } from "@/components/ui/page-loading";
+import { ListSkeleton } from "@/components/ui/page-loading";
 import { PredictCard } from "@/components/predict/predict-card";
 import { fetchVoteEvents } from "@/components/feed/feed-data";
 import { useMe } from "@/components/shell/me-context";
@@ -55,7 +55,7 @@ export default function PredictPage() {
         {error ? (
           <ErrorState description={`${error}. Түр хүлээгээд дахин оролдоно уу.`} retry={reload} />
         ) : events === null ? (
-          <PageLoading rows={2} />
+          <ListSkeleton rows={2} />
         ) : events.length === 0 ? (
           <EmptyState
             icon={Vote}

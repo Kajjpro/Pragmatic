@@ -9,8 +9,8 @@ import { postPrediction } from "@/components/feed/feed-data";
 import { voteOutcomeLabel } from "@/lib/labels";
 import { MAX_SUPPORT_GUESS, type Prediction, type VoteEvent } from "@/lib/types";
 import { cn } from "@/lib/cn";
+import { formatDate } from "@/lib/format";
 
-const dateFormat = new Intl.DateTimeFormat("mn-MN", { year: "numeric", month: "long", day: "numeric" });
 
 // ② Нэг санал хураалтын таамаг. Төвийг сахина: гишүүн, нам, "сайн/муу" дурдахгүй — зөвхөн тоо.
 export function PredictCard({
@@ -206,7 +206,7 @@ function Result({ event, mine }: { event: VoteEvent; mine: Prediction | undefine
       <p className="text-[15px] text-muted">
         Санал өгсөн <span className="tabular-nums">{total}</span> гишүүнээс <span className="tabular-nums">{support}</span> нь дэмжсэн.
         Хэлэлцүүлгийн шат: эцсийн хэлэлцүүлэг.
-        {event.revealedAt ? ` Хариу-д дүн нийтэлсэн: ${dateFormat.format(new Date(event.revealedAt))}.` : ""} Эх сурвалж: УИХ-ын санал хураалт.
+        {event.revealedAt ? ` Хариу-д дүн нийтэлсэн: ${formatDate(new Date(event.revealedAt))}.` : ""} Эх сурвалж: УИХ-ын санал хураалт.
       </p>
       {mine ? (
         <div className="rounded-md border border-line bg-surface-2 px-4 py-3 text-[15px]">

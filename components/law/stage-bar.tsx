@@ -16,8 +16,9 @@ export function StageBar({ current }: { current: Stage }) {
             <span className={cn("h-1 rounded-full", done || active ? "bg-primary" : "bg-line")} />
             <span
               className={cn(
-                "flex items-center gap-1 text-[13px] leading-tight",
-                active ? "font-semibold text-heading" : done ? "text-fg" : "text-muted",
+                "items-center gap-1 text-[13px] leading-tight",
+                // Гар утсанд зөвхөн одоогийн шатны нэр (бусад нь зураасаар)
+                active ? "flex font-semibold text-heading" : done ? "hidden text-fg sm:flex" : "hidden text-muted sm:flex",
               )}
             >
               {done ? <Check aria-hidden className="h-3.5 w-3.5 shrink-0" /> : null}

@@ -6,8 +6,8 @@ import { buttonClass } from "@/components/ui/button";
 import type { Badge } from "@/lib/types";
 import { BadgeIcon } from "./badge-icon";
 import { ShareButton } from "./share-button";
+import { formatDate } from "@/lib/format";
 
-const dateFormat = new Intl.DateTimeFormat("mn-MN", { year: "numeric", month: "long", day: "numeric" });
 
 // Шинэ "Хууль өөрчилсөн иргэн" тэмдэг — тайван, бүтэн өргөнтэй мэдэгдэл (цонх биш).
 export function LawChangerNotice({ badge, onClose }: { badge: Badge; onClose: () => void }) {
@@ -30,7 +30,7 @@ export function LawChangerNotice({ badge, onClose }: { badge: Badge; onClose: ()
           </p>
           <p className="mt-2 text-[15px] text-muted">
             {badge.lawTitle ?? "Хуулийн төсөл"}
-            {badge.clauseNumber ? `, ${badge.clauseNumber}-р заалт` : ""} · {dateFormat.format(new Date(badge.createdAt))}
+            {badge.clauseNumber ? `, ${badge.clauseNumber}-р заалт` : ""} · {formatDate(new Date(badge.createdAt))}
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <ShareButton

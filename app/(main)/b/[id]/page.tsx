@@ -10,6 +10,7 @@ import { BadgeIcon } from "@/components/me/badge-icon";
 import { Container } from "@/components/ui/page-header";
 import { buttonClass } from "@/components/ui/button";
 import { badgeLabels } from "@/lib/types";
+import { formatDate } from "@/lib/format";
 
 // ⑥ Нийтэд нээлттэй гэрчилгээний хуудас — нэвтрэх шаардлагагүй.
 // Зөвхөн нэрийн эхний үг харагдана (имэйл, бүтэн нэр хэзээ ч гарахгүй).
@@ -28,7 +29,6 @@ async function loadBadge(id: string) {
   });
 }
 
-const dateFormat = new Intl.DateTimeFormat("mn-MN", { year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Ulaanbaatar" });
 
 export async function generateMetadata({ params }: PageProps<"/b/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -74,7 +74,7 @@ export default async function BadgePage({ params }: PageProps<"/b/[id]">) {
               Энэ иргэний санал «{clause.project.title}» төслийн {clause.number}-р заалтад тусгагдсан.
             </p>
           ) : null}
-          <p className="mt-4 text-[14.5px] tabular-nums text-muted">{dateFormat.format(badge.createdAt)}</p>
+          <p className="mt-4 text-[14.5px] tabular-nums text-muted">{formatDate(badge.createdAt)}</p>
 
           {diff ? (
             <div className="mx-auto mt-8 max-w-xl rounded-md border border-line bg-surface-2 p-4 text-left">

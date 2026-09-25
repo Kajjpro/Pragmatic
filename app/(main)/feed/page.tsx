@@ -12,7 +12,7 @@ import { PersonaSelect } from "@/components/feed/persona-select";
 import { Container } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
-import { PageLoading } from "@/components/ui/page-loading";
+import { ListSkeleton } from "@/components/ui/page-loading";
 import { Button } from "@/components/ui/button";
 
 // ① Өнөөдрийн хууль. Өгөгдөл: GET /api/feed (DB-ээс, AI дуудахгүй).
@@ -169,7 +169,7 @@ export default function FeedPage() {
             }}
           />
         ) : cards === null ? (
-          <PageLoading rows={1} />
+          <ListSkeleton rows={1} />
         ) : cards.length === 0 ? (
           <EmptyState
             title={active === "ALL" ? "Одоогоор карт нийтлэгдээгүй байна" : "Энэ сонголтод тохирох карт алга"}

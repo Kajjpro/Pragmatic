@@ -10,6 +10,7 @@ export default function SignUpPage() {
         </div>
       </header>
       <main className="flex flex-1 items-center justify-center p-6">
+        <h1 className="sr-only">Бүртгүүлэх</h1>
         <SignUp />
       </main>
     </div>

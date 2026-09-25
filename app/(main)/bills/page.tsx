@@ -8,13 +8,13 @@ import { Pill } from "@/components/ui/pill";
 import { getPublicBills } from "@/lib/law/public";
 import { stageLabels } from "@/lib/labels";
 import { PERSONAS, personaLabels, type Persona } from "@/lib/types";
+import { formatShortDate } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Хуулийн өөрчлөлт",
   description: "Улсын Их Хурлаар хэлэлцэж буй хуулийн төслүүд: юу өөрчлөгдөх, хэнд хамаарах, иргэдийн санал.",
 };
 
-const dateFormat = new Intl.DateTimeFormat("mn-MN", { year: "numeric", month: "2-digit", day: "2-digit" });
 
 export default async function BillsPage({ searchParams }: PageProps<"/bills">) {
   const params = await searchParams;
@@ -105,7 +105,7 @@ export default async function BillsPage({ searchParams }: PageProps<"/bills">) {
                   </div>
                   <div>
                     <dt className="inline">Сүүлд шинэчилсэн: </dt>
-                    <dd className="inline tabular-nums">{dateFormat.format(new Date(b.updatedAt))}</dd>
+                    <dd className="inline tabular-nums">{formatShortDate(new Date(b.updatedAt))}</dd>
                   </div>
                 </dl>
                 <div className="mt-3 flex items-center justify-between gap-3">
