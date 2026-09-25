@@ -1,13 +1,8 @@
 import { cn } from "@/lib/cn";
-import type { Stage } from "@/lib/mock";
-import { stageLabels } from "@/lib/mock";
+import { commentStages, stageLabels, stageOrder } from "@/lib/labels";
+import type { Stage } from "@/lib/law/types";
 
-const order: Stage[] = [
-  "DISCUSS_DECISION",
-  "FIRST_READING",
-  "FINAL_READING",
-  "FINAL_APPROVAL",
-];
+const order = stageOrder;
 
 export function StageBar({
   current,
@@ -17,7 +12,7 @@ export function StageBar({
   size?: "sm" | "md";
 }) {
   const activeIdx = order.indexOf(current);
-  const commentPhase = current === "FIRST_READING" || current === "FINAL_READING";
+  const commentPhase = commentStages.includes(current);
   return (
     <div className="flex w-full flex-col gap-1">
       <ol className="flex w-full items-center gap-2">

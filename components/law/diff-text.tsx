@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import type { WordPart } from "@/lib/mock";
+import type { WordPart } from "@/lib/law/types";
 
 // Үг тус бүрийн зөрүү: улаан = хасагдсан + strikethrough, ногоон = нэмэгдсэн.
 export function DiffText({
