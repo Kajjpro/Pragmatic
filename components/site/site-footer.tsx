@@ -6,24 +6,19 @@ const cols = [
     title: "Иргэн",
     links: [
       { label: "Хуулиуд", href: "/" },
-      { label: "Миний оролцоо", href: "/me" },
-      { label: "Хэрэгжилтийн үүрэг", href: "/directives/dir-042" },
+      { label: "Миний санал", href: "/me" },
     ],
   },
   {
     title: "Ажилтан",
     links: [
       { label: "Ажлын самбар", href: "/staff" },
-      { label: "Тайлан шалгагч", href: "/staff/reports" },
-      { label: "Хяналтын бүртгэл", href: "/staff/registry" },
-      { label: "AI туслах", href: "/staff/ask" },
     ],
   },
   {
-    title: "Нээлттэй",
+    title: "Тухай",
     links: [
-      { label: "Нөлөөллийн тоо", href: "/stats" },
-      { label: "Пич", href: "/pitch" },
+      { label: "Платформын тухай", href: "/about" },
     ],
   },
 ];

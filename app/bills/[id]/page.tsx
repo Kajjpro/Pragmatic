@@ -2,9 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { mockBill } from "@/lib/mock";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CommentForm } from "@/components/feedback/comment-form";
+import { StageBar } from "@/components/law/stage-bar";
+import { ClauseCompare } from "@/components/law/clause-compare";
+import { ChangeExplain } from "@/components/law/change-explain";
+import { ChangeBadge } from "@/components/law/change-badge";
+import { ReflectionBadge } from "@/components/feedback/reflection-badge";
 
 async function loadBill(id: string) {
   return prisma.project.findUnique({
@@ -14,25 +20,15 @@ async function loadBill(id: string) {
         orderBy: { order: "asc" },
         include: {
           _count: { select: { comments: true } },
-          clusters: {
-            select: {
-              id: true,
-              label: true,
-              summary: true,
-              status: true,
-              reply: {
-                select: {
-                  finalText: true,
-                  approvedAt: true,
-                },
-              },
-              _count: { select: { comments: true } },
-            },
-          },
         },
       },
     },
   });
+}
+
+// Заалтын дугаар (14.2 гэх мэт) дээр үндэслэн mock-той нэгтгэж diff/explain-ыг гаргаж авна.
+function mockByNumber(number: string) {
+  return mockBill.clauses.find((c) => c.number === number) ?? null;
 }
 
 export default async function BillPage({
@@ -44,11 +40,6 @@ export default async function BillPage({
 
   const { userId } = await auth();
   const signedIn = Boolean(userId);
-
-  const commentCount = bill.clauses.reduce(
-    (a, c) => a + c._count.comments,
-    0,
-  );
 
   return (
     <div className="bg-parliament-50/30 pb-16">
@@ -66,7 +57,9 @@ export default async function BillPage({
               <StatusPill tone="info">{bill.categoryTitle}</StatusPill>
             ) : null}
             {bill.typeTitle ? (
-              <span className="text-[11.5px] text-ink-500">{bill.typeTitle}</span>
+              <span className="text-[11.5px] text-ink-500">
+                {bill.typeTitle}
+              </span>
             ) : null}
           </div>
           <h1 className="mt-2 font-editorial text-2xl font-medium text-parliament-900">
@@ -77,16 +70,8 @@ export default async function BillPage({
               {bill.description}
             </p>
           ) : null}
-          <div className="mt-4 flex flex-wrap items-center gap-4 text-[11.5px] text-ink-500">
-            <span>
-              <b className="text-parliament-700">{bill.clauses.length}</b> заалт
-            </span>
-            <span>
-              <b className="text-parliament-700">{commentCount}</b> иргэний санал
-            </span>
-            {bill.publishedAt ? (
-              <span>{bill.publishedAt.toISOString().slice(0, 10)}</span>
-            ) : null}
+          <div className="mt-5">
+            <StageBar current={mockBill.stage} size="sm" />
           </div>
         </div>
       </section>
@@ -99,87 +84,105 @@ export default async function BillPage({
           />
         ) : (
           <ol className="flex flex-col gap-4">
-            {bill.clauses.map((clause) => (
-              <li
-                key={clause.id}
-                className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,42,99,0.3)]"
-              >
-                <header className="flex flex-wrap items-center gap-2">
-                  <StatusPill tone="info">{clause.number}</StatusPill>
-                  {clause.heading ? (
-                    <span className="text-[13px] font-semibold text-parliament-900">
-                      {clause.heading}
+            {bill.clauses.map((clause) => {
+              const overlay = mockByNumber(clause.number);
+              const hasDiff = overlay && overlay.changeType !== "UNCHANGED";
+              return (
+                <li
+                  key={clause.id}
+                  className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,42,99,0.3)]"
+                >
+                  <header className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md bg-parliament-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-parliament-700">
+                      {clause.number}
                     </span>
-                  ) : null}
-                  <span className="ml-auto text-[11px] text-ink-500">
-                    {clause._count.comments} санал
-                  </span>
-                </header>
+                    {overlay ? (
+                      <ChangeBadge type={overlay.changeType} />
+                    ) : null}
+                    {clause.heading ? (
+                      <span className="text-[13px] font-semibold text-parliament-900">
+                        {clause.heading}
+                      </span>
+                    ) : null}
+                    <span className="ml-auto text-[11px] text-ink-500">
+                      {clause._count.comments} санал
+                    </span>
+                  </header>
 
-                <p className="mt-3 text-[13.5px] leading-relaxed text-ink-900">
-                  {clause.originalText}
-                </p>
-
-                {clause.plainText ? (
-                  <div className="mt-3 rounded-xl bg-parliament-50/60 p-3">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-parliament-500">
-                      Энгийн тайлбар
+                  {hasDiff ? (
+                    <div className="mt-4">
+                      <ClauseCompare
+                        oldText={overlay!.oldText}
+                        newText={overlay!.newText}
+                        diff={overlay!.diff}
+                      />
                     </div>
-                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-parliament-900">
-                      {clause.plainText}
+                  ) : (
+                    <p className="mt-3 text-[13.5px] leading-relaxed text-ink-900">
+                      {clause.originalText}
                     </p>
-                  </div>
-                ) : null}
+                  )}
 
-                {clause.clusters.length ? (
-                  <div className="mt-4 flex flex-col gap-2">
-                    <div className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
-                      Иргэдийн бүлгүүд
+                  {overlay ? (
+                    <div className="mt-4">
+                      <ChangeExplain
+                        what={overlay.what}
+                        why={overlay.why}
+                        who={overlay.who}
+                      />
                     </div>
-                    {clause.clusters.map((cl) => {
-                      const answered = Boolean(cl.reply?.finalText);
-                      return (
+                  ) : clause.plainText ? (
+                    <div className="mt-3 rounded-xl bg-parliament-50/60 p-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-parliament-500">
+                        Энгийн тайлбар
+                      </div>
+                      <p className="mt-0.5 text-[12.5px] leading-relaxed text-parliament-900">
+                        {clause.plainText}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {overlay && overlay.groups.length ? (
+                    <div className="mt-4 flex flex-col gap-2">
+                      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+                        Иргэдийн бүлгүүд
+                      </div>
+                      {overlay.groups.map((g) => (
                         <div
-                          key={cl.id}
+                          key={g.id}
                           className="rounded-xl border border-ink-100 bg-parliament-50/30 p-3"
                         >
                           <div className="flex items-center gap-2">
-                            <StatusPill
-                              tone={answered ? "good" : "warn"}
-                            >
-                              {answered ? "Хариу өгсөн" : "Хүлээгдэж буй"}
-                            </StatusPill>
+                            <ReflectionBadge value={g.reflection} />
                             <span className="text-[11px] text-ink-500">
-                              {cl._count.comments} санал
+                              {g.commentCount.toLocaleString("mn-MN")} санал
                             </span>
                           </div>
                           <div className="mt-1.5 text-[13px] font-semibold text-ink-900">
-                            {cl.label}
+                            {g.title}
                           </div>
-                          {cl.summary ? (
-                            <p className="mt-1 text-[12px] leading-relaxed text-ink-500">
-                              {cl.summary}
-                            </p>
-                          ) : null}
-                          {answered ? (
+                          <p className="mt-1 text-[12px] leading-relaxed text-ink-500">
+                            {g.summary}
+                          </p>
+                          {g.replyText ? (
                             <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-[12.5px] leading-relaxed text-emerald-900">
                               <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
                                 ✅ Комисс
                               </div>
-                              {cl.reply!.finalText}
+                              {g.replyText}
                             </div>
                           ) : null}
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
+                      ))}
+                    </div>
+                  ) : null}
 
-                <div className="mt-4">
-                  <CommentForm clauseId={clause.id} isSignedIn={signedIn} />
-                </div>
-              </li>
-            ))}
+                  <div className="mt-4">
+                    <CommentForm clauseId={clause.id} isSignedIn={signedIn} />
+                  </div>
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>
