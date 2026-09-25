@@ -64,7 +64,8 @@ DATABASE_URL="<production>" STAFF_EMAILS="..." npm run seed
 #    Ажилтнаар нэвтэрч POST /api/staff/vote-events/sync, эсвэл:
 DATABASE_URL="<production>" PARLIAMENT_API_URL="..." npm run vote -- sync
 
-# 4. Бүх идэвхтэй хуулийн төсөл: LawForum → Project (seed-ийн дараа; дахин ажиллуулж болно, давхардуулахгүй)
+# 4. Бүх идэвхтэй хуулийн төсөл: LawForum → Project. АВТОМАТ: /bills анх нээгдэхэд татаж, 6 цаг тутам цаана нь шинэчилнэ.
+#    Гараар хүчээр шинэчлэх бол (дахин ажиллуулж болно, давхардуулахгүй):
 #    Ажилтнаар нэвтэрч /staff → «LawForum-оос шинэчлэх», эсвэл:
 DATABASE_URL="<production>" npm run sync:projects
 ```

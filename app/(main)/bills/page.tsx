@@ -7,6 +7,7 @@ import { FilterLinks } from "@/components/ui/filter-links";
 import { Pill } from "@/components/ui/pill";
 import { buttonClass } from "@/components/ui/button";
 import { getPublicBills } from "@/lib/law/public";
+import { ensureProjectsFresh } from "@/lib/lawforum-sync";
 import { stageLabels } from "@/lib/labels";
 import { formatShortDate } from "@/lib/format";
 import { PERSONAS, personaLabels, type Persona } from "@/lib/types";
@@ -18,6 +19,9 @@ export const metadata: Metadata = {
 
 const PAGE_SIZE = 20;
 
+// Анх удаа LawForum-оос татах үед хугацаа хэрэгтэй (Vercel)
+export const maxDuration = 60;
+
 export default async function BillsPage({ searchParams }: PageProps<"/bills">) {
   const params = await searchParams;
   const persona = PERSONAS.find((p) => p === params.persona) ?? null;
@@ -25,6 +29,8 @@ export default async function BillsPage({ searchParams }: PageProps<"/bills">) {
   const q = typeof params.q === "string" ? params.q.trim() : "";
   const page = Math.max(1, Number(params.page) || 1);
 
+  // LawForum-ын төслүүд DB-д байхгүй эсвэл хуучирсан бол автоматаар татна
+  const freshness = await ensureProjectsFresh().catch(() => "lawforum-unreachable" as const);
   const all = await getPublicBills();
   const categories = Array.from(new Set(all.map((b) => b.categoryTitle).filter((c): c is string => Boolean(c)))).sort();
 
@@ -110,7 +116,9 @@ export default async function BillsPage({ searchParams }: PageProps<"/bills">) {
             title={all.length === 0 ? "Төсөл хараахан татагдаагүй байна" : "Энэ хайлт, шүүлтүүрт тохирох төсөл алга"}
             description={
               all.length === 0
-                ? "LawForum-оос төслүүдийг татсаны дараа энд харагдана."
+                ? freshness === "lawforum-unreachable"
+                  ? "LawForum-тай одоогоор холбогдож чадсангүй. Хэсэг хугацааны дараа хуудсаа дахин ачаална уу."
+                  : "LawForum-оос төслүүдийг татсаны дараа энд харагдана."
                 : "Өөр үг, бүлэг эсвэл ангилал сонгоно уу."
             }
             action={
