@@ -1,23 +1,31 @@
 @import "tailwindcss";
 
 @theme {
-  --color-parliament-950: #0a1f4a;
-  --color-parliament-900: #0f2a63;
-  --color-parliament-800: #123278;
-  --color-parliament-700: #1a3e94;
-  --color-parliament-600: #2a52b8;
-  --color-parliament-500: #3a67d4;
-  --color-parliament-100: #e6ecfa;
-  --color-parliament-50: #f2f5fc;
+  /* built around brand primaries: parliament #1c4392 · gold #ffc607 */
+  --color-parliament-950: #0f2350;
+  --color-parliament-900: #163373;
+  --color-parliament-800: #1a3e88;
+  --color-parliament-700: #1c4392;
+  --color-parliament-600: #2f5db2;
+  --color-parliament-500: #4c7bd4;
+  --color-parliament-400: #7ea4e0;
+  --color-parliament-100: #dfe6f5;
+  --color-parliament-50: #eff3fb;
 
-  --color-gold-400: #f4c542;
-  --color-gold-500: #d4a017;
+  --color-gold-500: #cc9d00;
+  --color-gold-400: #ffc607;
+  --color-gold-300: #ffd54a;
+  --color-gold-100: #fff2c4;
 
   --color-ink-900: #0b1220;
   --color-ink-700: #33415c;
   --color-ink-500: #6b7692;
   --color-ink-300: #c1c8d6;
   --color-ink-100: #eef1f6;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "SF Pro Display", "SF Pro", "Helvetica Neue", Arial, system-ui,
+    sans-serif;
 
   --font-display: var(--font-geist-sans);
   --font-editorial: var(--font-serif);
@@ -63,7 +71,7 @@ html, body {
   pointer-events: none;
   background-image: radial-gradient(
     ellipse 45% 40% at 78% 18%,
-    rgba(244, 197, 66, 0.13),
+    rgba(255, 198, 7, 0.12),
     transparent 70%
   );
 }

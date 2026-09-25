@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
+import { Geist_Mono, Playfair_Display } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { SiteHeader } from "@/components/site/site-header";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -31,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <ClerkProvider>
       <html
         lang="mn"
-        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased`}
+        className={`${geistMono.variable} ${playfair.variable} h-full antialiased`}
       >
         <body className="min-h-full bg-white text-ink-900 flex flex-col font-sans">
           <SiteHeader />

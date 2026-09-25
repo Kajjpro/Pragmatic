@@ -9,15 +9,13 @@ import {
 import { DEMO_MODE, todayLabel } from "@/lib/stub/context";
 
 const primaryNav = [
-  { label: "УЛСЫН ИХ ХУРЛЫН ТУХАЙ", href: "#" },
-  { label: "УЛСЫН ИХ ХУРЛЫН ҮЙЛ АЖИЛЛАГАА", href: "#" },
-  { label: "ТАМГЫН ГАЗАР", href: "#" },
+  { label: "ХУУЛЬ ТӨСӨЛ", href: "/" },
+  { label: "МИНИЙ САНАЛ", href: "/me" },
 ];
 
 const rightNav = [
-  { label: "ИХ ХУРЛЫН ГИШҮҮД", href: "#" },
-  { label: "ЦЭХИЙН ПАРЛАМЕНТ", href: "#" },
-  { label: "МЭДЭЭЛЛИЙН САН", href: "#" },
+  { label: "ТАМГЫН ГАЗАР", href: "/staff" },
+  { label: "ТУХАЙ", href: "/about" },
 ];
 
 export function SiteHeader() {
@@ -90,12 +88,6 @@ export function SiteHeader() {
               </SignUpButton>
             </Show>
             <Show when="signed-in">
-              <Link
-                href="/me"
-                className="hidden text-[11.5px] font-semibold text-white/85 transition hover:text-white md:inline"
-              >
-                Миний оролцоо
-              </Link>
               <UserButton
                 appearance={{
                   elements: { avatarBox: "h-8 w-8 ring-2 ring-white/25" },
