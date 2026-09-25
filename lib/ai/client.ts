@@ -1,25 +1,27 @@
 // lib/ai/client.ts
 // Бүх AI функц AI-тай ЭНЭ файлаар дамжиж ярина.
-// Эхлээд Gemini-ээс асууна. Gemini завгүй (429/503) бол Claude руу шилжинэ.
+// Дараалал: Gemini үндсэн загвар → Gemini нөөц загварууд → Claude (түлхүүр байвал).
+// Завгүй (429/503) үед л дараагийнх руу шилжинэ.
 //
 // .env тохиргоо:
-//   AI_PROVIDER=gemini   (анхдагч) Gemini → завгүй бол Claude
+//   AI_PROVIDER=gemini   (анхдагч) дээрх дарааллаар
 //   AI_PROVIDER=claude   Gemini-г алгасаад шууд Claude
-//   GEMINI_API_KEY, GEMINI_MODEL
-//   ANTHROPIC_API_KEY, ANTHROPIC_MODEL (анхдагч "claude-sonnet-5")
+//   GEMINI_API_KEY
+//   GEMINI_MODEL                 үндсэн загвар (анхдагч "gemini-3.5-flash-lite")
+//   GEMINI_FALLBACK_MODELS       нөөц загварууд, таслалаар: "gemini-3.1-pro-preview,gemini-3.6-flash"
+//   ANTHROPIC_API_KEY, ANTHROPIC_MODEL (анхдагч "claude-sonnet-5") — заавал биш
 
 import { GoogleGenAI } from "@google/genai";
 import Anthropic from "@anthropic-ai/sdk";
 
-// 1. Загварын нэрсийг .env-ээс уншина
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.7-flash";
+// 1. Claude-ийн загварын нэр
 const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
 
 // 2. Gemini-тэй холбогдох
 const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// Gemini-г хэдэн удаа оролдох вэ (дараа нь Claude руу шилжинэ)
-const MAX_ATTEMPTS = 3;
+// Нэг Gemini загварыг хэдэн удаа оролдох вэ (дараа нь дараагийн загвар руу шилжинэ)
+const MAX_ATTEMPTS = 2;
 
 // ── ГОЛ ФУНКЦ: prompt илгээж, JSON хариу авна ──
 // Нэр нь "askGeminiJSON" хэвээр (бусад файлууд үүнийг дууддаг), гэхдээ Claude ч хариулж болно.
@@ -29,42 +31,62 @@ export async function askGeminiJSON(prompt: string) {
     return askClaude(prompt);
   }
 
-  // 2. Эхлээд Gemini
-  try {
-    return await askGemini(prompt);
-  } catch (error) {
-    // 3. Gemini завгүй биш өөр алдаа бол (буруу түлхүүр гэх мэт) шууд дээш дамжуулна
-    if (!isBusyError(error)) {
-      throw error;
+  // 2. Gemini загваруудыг дарааллаар нь оролдоно
+  const models = getGeminiModels();
+  for (const model of models) {
+    try {
+      return await askGemini(prompt, model);
+    } catch (error) {
+      // Завгүй биш өөр алдаа бол (буруу түлхүүр гэх мэт) шууд дээш дамжуулна
+      if (!isBusyError(error)) {
+        throw error;
+      }
+      console.log(`${model} завгүй байна → дараагийн загвар руу шилжиж байна...`);
     }
-    // 4. Gemini завгүй → Claude руу шилжинэ
-    console.log("Gemini завгүй байна → Claude руу шилжиж байна...");
-    return askClaude(prompt);
   }
+
+  // 3. Бүх Gemini загвар завгүй → Claude руу шилжинэ
+  console.log("Бүх Gemini загвар завгүй → Claude руу шилжиж байна...");
+  return askClaude(prompt);
 }
 
-// ── Gemini-ээс асуух (завгүй бол хүлээгээд дахин оролдоно) ──
-async function askGemini(prompt: string) {
+// Gemini загваруудын жагсаалт: эхлээд үндсэн, дараа нь нөөц загварууд
+function getGeminiModels(): string[] {
+  const models: string[] = [process.env.GEMINI_MODEL || "gemini-3.5-flash-lite"];
+  const fallbackText = process.env.GEMINI_FALLBACK_MODELS || "";
+  for (const name of fallbackText.split(",")) {
+    const cleanName = name.trim();
+    if (cleanName !== "" && !models.includes(cleanName)) {
+      models.push(cleanName);
+    }
+  }
+  return models;
+}
+
+// ── Нэг Gemini загвараас асуух (завгүй бол хүлээгээд дахин оролдоно) ──
+async function askGemini(prompt: string, model: string) {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const response = await gemini.models.generateContent({
-        model: GEMINI_MODEL,
+        model: model,
         contents: prompt,
         config: {
           responseMimeType: "application/json", // "зөвхөн JSON буцаа" гэж хэлнэ
           temperature: 0.2, // бага утга = тогтвортой, зохиомол багатай хариу
         },
       });
-      console.log(`AI хариулсан: Gemini (${GEMINI_MODEL})`);
+      console.log(`AI хариулсан: Gemini (${model})`);
       return parseJSON(response.text || "");
     } catch (error) {
       // Завгүй биш алдаа эсвэл сүүлийн оролдлого бол алдааг дээш нь дамжуулна
       if (!isBusyError(error) || attempt === MAX_ATTEMPTS) {
-        console.log(`Gemini алдаа (${attempt}-р оролдлого):`, String(error).slice(0, 200));
+        console.log(`${model} алдаа (${attempt}-р оролдлого):`, String(error).slice(0, 200));
         throw error;
       }
-      console.log(`Gemini завгүй (${attempt}-р оролдлого), ${attempt * 5} секунд хүлээнэ...`);
-      await wait(attempt * 5000);
+      // 429 = минутын лимит хэтэрсэн → минут дуусахыг 20 секунд хүлээнэ. 503 = түр ачаалал → 5 секунд.
+      const seconds = String(error).includes("429") ? 20 : 5;
+      console.log(`${model} завгүй (${attempt}-р оролдлого), ${seconds} секунд хүлээнэ...`);
+      await wait(seconds * 1000);
     }
   }
   throw new Error("Gemini хариу өгсөнгүй");
