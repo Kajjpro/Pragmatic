@@ -26,6 +26,7 @@ export async function getMe(userId: string): Promise<MeData> {
             id: true,
             type: true,
             createdAt: true,
+            submissionId: true,
             submission: { select: { clause: { select: { number: true, project: { select: { title: true } } } } } },
           },
         },
@@ -71,12 +72,13 @@ export async function getMe(userId: string): Promise<MeData> {
     points: user.points,
     streak: visibleStreak(lastDay, today, user.streak),
     activeToday: lastDay === today,
-    badges: user.badges.map((b) =>
-      toBadge(
+    badges: user.badges.map((b) => ({
+      ...toBadge(
         b,
         b.submission && { lawTitle: b.submission.clause.project.title, clauseNumber: b.submission.clause.number },
       ),
-    ),
+      commentId: b.submissionId,
+    })),
     predictions: predictions.map(({ voteEvent, createdAt, ...p }) => ({
       ...p,
       createdAt: createdAt.toISOString(),

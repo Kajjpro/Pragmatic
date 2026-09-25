@@ -9,15 +9,9 @@ import type { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { Badge, BadgeType, Prediction } from "@/lib/types";
 
-export const POINTS = {
-  CARD_VIEW: 1, // карт үзэх — өдөрт нэг картад нэг удаа
-  QUIZ_CORRECT: 3, // асуултад анхны оролдлогоор зөв хариулах
-  PREDICTION_PASS: 10, // батлагдах эсэхийг зөв таах
-  RELEVANT_COMMENT: 2, // AI санал "хамааралтай" гэж үзсэн
-  REFLECTED: 50, // санал хуульд тусгагдсан
-} as const;
-
-export const STREAK_BADGE_DAYS = 7;
+// Онооны дүрмийг хөтөч ч уншдаг тул тусад нь (DB-гүй) файлд байлгана
+export { POINTS, STREAK_BADGE_DAYS } from "@/lib/points-rules";
+import { POINTS, STREAK_BADGE_DAYS, SUPPORT_GUESS_POINTS } from "@/lib/points-rules";
 
 type Tx = Prisma.TransactionClient;
 
@@ -81,9 +75,8 @@ export function scorePrediction(
   if (prediction.willPass === event.passed) points += POINTS.PREDICTION_PASS;
 
   const miss = Math.abs(prediction.supportGuess - event.actualSupport);
-  if (miss <= 3) points += 10;
-  else if (miss <= 8) points += 5;
-  else if (miss <= 15) points += 2;
+  const tier = SUPPORT_GUESS_POINTS.find((t) => miss <= t.within);
+  if (tier) points += tier.points;
 
   return points;
 }

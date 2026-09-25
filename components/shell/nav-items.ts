@@ -1,14 +1,14 @@
-import { Home, BookOpenText, Scale, Vote, UserRound, type LucideIcon } from "lucide-react";
+import { Home, BookOpenText, Scale, Vote, BadgeCheck, type LucideIcon } from "lucide-react";
 
-// Үндсэн цэс. Гар утсанд short нэрийг доод цэсэнд харуулна.
-export type NavItem = { href: string; label: string; short: string; icon: LucideIcon };
+// Үндсэн цэс: гурван гол боломж (①②⑥) төвд. Гар утсанд short нэрийг доод цэсэнд харуулна.
+export type NavItem = { href: string; label: string; short: string; icon: LucideIcon; hero?: boolean };
 
 export const navItems: NavItem[] = [
   { href: "/", label: "Нүүр", short: "Нүүр", icon: Home },
-  { href: "/feed", label: "Өнөөдрийн хууль", short: "Өнөөдөр", icon: BookOpenText },
-  { href: "/bills", label: "Хуулийн өөрчлөлт", short: "Өөрчлөлт", icon: Scale },
-  { href: "/predict", label: "Таамаг", short: "Таамаг", icon: Vote },
-  { href: "/me", label: "Миний оролцоо", short: "Оролцоо", icon: UserRound },
+  { href: "/feed", label: "Өнөөдрийн хууль", short: "Өнөөдөр", icon: BookOpenText, hero: true },
+  { href: "/predict", label: "Таамаг", short: "Таамаг", icon: Vote, hero: true },
+  { href: "/me", label: "Би хууль өөрчилсөн", short: "Нөлөө", icon: BadgeCheck, hero: true },
+  { href: "/bills", label: "Хуулийн төслүүд", short: "Төслүүд", icon: Scale },
 ];
 
 // "/" зөвхөн яг таарвал идэвхтэй; бусад нь дэд хуудсыг хамруулна

@@ -32,6 +32,8 @@ export const personaLabels: Record<Persona, string> = {
 
 // ── ① Өнөөдрийн хууль — 60 секундийн карт ──
 export type CardKind = "BILL" | "CHANGE"; // бүтэн төсөл | нэг заалтын өөрчлөлт
+// Төслийн төрөл: одоогийн хуульд нэмэлт өөрчлөлт | шинэчилсэн найруулга | анхдагч (шинэ) хууль
+export type BillKind = "AMENDMENT" | "REVISION" | "NEW";
 
 // Викторины асуулт. correctIndex, explanation-ийг ЭНД ХЭЗЭЭ Ч явуулахгүй.
 export type QuizQuestionView = {
@@ -58,6 +60,11 @@ export type FeedCard = {
   projectTitle?: string | null; // хуулийн нэр (картын дээд талд)
   clauseNumber?: string | null; // CHANGE картын заалтын дугаар
   diff?: WordPart[] | null; // CHANGE картын үгийн ялгаа (тодруулахад)
+  sourceQuote?: string | null; // төслөөс яг хуулсан өгүүлбэр
+  what?: string | null; // explainChange: заалт юуг өөрчлөх вэ (CHANGE карт)
+  categoryTitle?: string | null; // LawForum-ын ангилал ("Татвар" г.м.)
+  projectPublishedAt?: string | null; // LawForum-д нийтэлсэн огноо
+  projectKind?: BillKind | null; // төслийн төрөл (гарчиг, танилцуулгаас)
 };
 
 // POST /api/quiz/[id]/answer { chosenIndex } → QuizAnswerResult
@@ -100,6 +107,7 @@ export type VoteEvent = {
   passed: boolean | null; // дэмжсэн нь олонх (support > oppose)
   projectId?: string | null;
   predictionCount?: number; // хэдэн хүн таамагласан
+  predictionYes?: number; // үүнээс "батлагдана" гэж таамагласан (олны харьцаа)
   revealedAt?: string | null;
 };
 
@@ -134,6 +142,14 @@ export type Badge = {
   createdAt: string;
   lawTitle?: string | null; // LAW_CHANGER үед
   clauseNumber?: string | null; // LAW_CHANGER үед
+  commentId?: string | null; // LAW_CHANGER: аль санал тусгагдсан
+};
+
+// GET /api/comment-targets — санал авч буй заалтууд (санал ирүүлэх форм)
+export type CommentTarget = {
+  billId: string;
+  billTitle: string;
+  clauses: { id: string; number: string; changeType: ChangeType; what: string | null }[];
 };
 
 // GET /api/badges/[id] — нэвтрээгүй ч харна. Имэйл, бүтэн нэр хэзээ ч гарахгүй.

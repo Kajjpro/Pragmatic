@@ -35,7 +35,7 @@ export function today(): string {
   });
 }
 
-function yesterdayOf(day: string): string {
+export function yesterdayOf(day: string): string {
   const d = new Date(`${day}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().slice(0, 10);
@@ -54,11 +54,19 @@ export function readProgress(): Progress {
   }
 }
 
+// Толгойн оноо, streak шууд шинэчлэгдэхийн тулд өөрчлөлтийг зарлана
+export const PROGRESS_EVENT = "hariu:progress";
+
 export function writeProgress(p: Progress): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(p));
   } catch {
     // Хаалттай горимд хадгалж чадахгүй — апп ажилласаар байна
+  }
+  try {
+    window.dispatchEvent(new Event(PROGRESS_EVENT));
+  } catch {
+    // Серверт window байхгүй
   }
 }
 

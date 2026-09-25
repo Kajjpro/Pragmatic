@@ -29,6 +29,7 @@ const steps = [
     line: "Нэг өөрчлөлтийг 60 секундэд: өмнө нь ямар байсан, ямар болох, танд юу хамаатай.",
     href: "/feed",
     cta: "Унших",
+    tint: "bg-surface-2 text-heading",
   },
   {
     icon: Vote,
@@ -36,13 +37,15 @@ const steps = [
     line: "Санал хураалтын дүнг урьдчилан таамаглаж, бодит дүнтэй харьцуулна.",
     href: "/predict",
     cta: "Таамаглах",
+    tint: "bg-gold-bg text-gold-fg",
   },
   {
     icon: BadgeCheck,
-    title: "Хууль өөрчилсөн иргэн",
-    line: "Таны санал хуульд тусгагдвал бодит нөлөөний гэрчилгээ авна.",
+    title: "Би хууль өөрчилсөн",
+    line: "Саналаа ирүүлж, Илгээсэн → Хэлэлцэж байна → Тусгагдсан явцыг дагана. Тусгагдвал иргэний нөлөөний батламж авна.",
     href: "/me",
-    cta: "Миний оролцоо",
+    cta: "Санал ирүүлэх",
+    tint: "bg-good-bg text-good-fg",
   },
 ];
 
@@ -86,8 +89,8 @@ export default async function HomePage() {
             <Link href="/feed" className={buttonClass("primary", "lg")}>
               Өнөөдрийн хуулийг унших
             </Link>
-            <Link href="/bills" className={buttonClass("secondary", "lg")}>
-              Хуулийн өөрчлөлтүүдийг харах
+            <Link href="/predict" className={buttonClass("secondary", "lg")}>
+              Санал хураалтыг таамаглах
             </Link>
           </div>
 
@@ -119,9 +122,11 @@ export default async function HomePage() {
               <Link
                 key={s.href}
                 href={s.href}
-                className="group flex flex-col rounded-lg border border-line bg-surface p-5 transition-colors hover:border-primary"
+                className="group flex flex-col rounded-2xl border border-line bg-surface p-6 shadow-card transition-[border-color,box-shadow] hover:border-primary hover:shadow-lift"
               >
-                <s.icon aria-hidden className="h-6 w-6 text-heading" strokeWidth={1.75} />
+                <span className={`grid h-11 w-11 place-items-center rounded-xl ${s.tint}`}>
+                  <s.icon aria-hidden className="h-5 w-5" strokeWidth={2} />
+                </span>
                 <h3 className="mt-3 text-[19px] font-bold">{s.title}</h3>
                 <p className="mt-1.5 flex-1 text-[15.5px] text-muted">{s.line}</p>
                 <span className="mt-4 inline-flex items-center gap-1 text-[15px] font-semibold text-action">

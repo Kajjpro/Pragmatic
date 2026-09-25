@@ -9,11 +9,11 @@ export default function ErrorPage({ reset }: { error: Error & { digest?: string 
   return (
     <div className="min-h-dvh bg-page">
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex h-16 max-w-[1120px] items-center px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-[1180px] items-center px-4 sm:px-6">
           <Logo />
         </div>
       </header>
-      <main className="mx-auto max-w-[1120px] px-4 py-20 sm:px-6">
+      <main className="mx-auto max-w-[1180px] px-4 py-20 sm:px-6">
         <h1 className="text-[30px] font-bold">Уучлаарай, алдаа гарлаа</h1>
         <p className="mt-3 max-w-xl text-muted">
           Хуудсыг ачаалах үед техникийн алдаа гарлаа. Түр хүлээгээд дахин оролдоно уу.

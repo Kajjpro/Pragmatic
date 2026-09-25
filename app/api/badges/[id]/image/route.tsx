@@ -51,7 +51,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/badges/[id]/ima
 
     return new ImageResponse(
       (
-        <div style={{ width: "100%", height: "100%", display: "flex", padding: 36, backgroundColor: "#F7F8FA" }}>
+        <div style={{ width: "100%", height: "100%", display: "flex", padding: 36, backgroundColor: "#F9FAFB" }}>
           <div
             style={{
               flex: 1,
@@ -60,19 +60,19 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/badges/[id]/ima
               justifyContent: "space-between",
               padding: "48px 60px",
               backgroundColor: "#FFFFFF",
-              border: "2px solid #9A7B2F",
+              border: "2px solid #059669",
               color: "#111827",
               fontFamily: SANS,
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 26, color: "#4B5563" }}>
-              <div style={{ display: "flex", fontFamily: SERIF, fontSize: 34, color: "#0F2A4A" }}>Хариу</div>
-              <div style={{ display: "flex" }}>Бодит нөлөөний гэрчилгээ</div>
+              <div style={{ display: "flex", fontFamily: SERIF, fontSize: 34, color: "#111827" }}>Хариу</div>
+              <div style={{ display: "flex" }}>Иргэний нөлөөний батламж</div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "flex", fontFamily: SERIF, fontSize: 68, color: "#0F2A4A", lineHeight: 1.1 }}>{title}</div>
-              <div style={{ display: "flex", width: 120, height: 3, backgroundColor: "#9A7B2F" }} />
+              <div style={{ display: "flex", fontFamily: SERIF, fontSize: 68, color: "#111827", lineHeight: 1.1 }}>{title}</div>
+              <div style={{ display: "flex", width: 120, height: 3, backgroundColor: "#059669" }} />
               <div style={{ display: "flex", fontFamily: SERIF, fontSize: 48 }}>{badge.firstName}</div>
               {badge.lawTitle ? (
                 <div style={{ display: "flex", fontSize: 30, color: "#374151", lineHeight: 1.35 }}>

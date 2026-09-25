@@ -7,40 +7,28 @@ import { cn } from "@/lib/cn";
 import { Logo } from "./logo";
 import { isActive, navItems } from "./nav-items";
 import { NotificationBell } from "./notification-bell";
+import { ApiStatusPill, PointsBadge, StreakButton } from "./header-stats";
 
-// Дээд самбар (наалттай). Компьютерт бүтэн цэс, гар утсанд лого + нэвтрэх.
+// Наалттай толгой: лого, УИХ API-ийн төлөв, дараалсан өдөр, оноо, нэвтрэх.
+// Компьютерт доор нь табан цэс; гар утсанд доод цэс (BottomNav).
 export function TopBar() {
   const path = usePathname() ?? "/";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-surface">
-      <div className="mx-auto flex h-16 max-w-[1120px] items-center gap-4 px-4 sm:px-6">
+    <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
+      <div className="mx-auto flex h-16 max-w-[1180px] items-center gap-3 px-4 sm:px-6">
         <Logo />
-
-        <nav aria-label="Үндсэн цэс" className="ml-4 hidden items-center gap-1 lg:flex">
-          {navItems.map((item) => {
-            const active = isActive(item.href, path);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "rounded-md px-3 py-2 text-[15px] font-medium transition-colors",
-                  active ? "bg-surface-2 text-heading" : "text-muted hover:bg-surface-2 hover:text-fg",
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="ml-3 hidden md:block">
+          <ApiStatusPill />
+        </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <StreakButton />
+          <PointsBadge />
           <NotificationBell />
           <Show when="signed-out">
             <SignInButton mode="modal">
-              <button type="button" className="min-h-9 rounded-md border border-line-strong px-3.5 text-[14px] font-semibold text-fg hover:border-primary">
+              <button type="button" className="min-h-9 rounded-full border border-line-strong px-3.5 text-[14px] font-semibold text-fg hover:border-primary">
                 Нэвтрэх
               </button>
             </SignInButton>
@@ -50,6 +38,31 @@ export function TopBar() {
           </Show>
         </div>
       </div>
+
+      {/* Табан цэс (компьютер) */}
+      <nav aria-label="Үндсэн цэс" className="hidden border-t border-line lg:block">
+        <ul className="mx-auto flex max-w-[1180px] items-stretch gap-1 px-4 sm:px-6">
+          {navItems.map((item) => {
+            const active = isActive(item.href, path);
+            const Icon = item.icon;
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "-mb-px flex h-12 items-center gap-2 border-b-2 px-3 text-[14.5px] font-medium transition-colors",
+                    active ? "border-primary text-heading" : "border-transparent text-muted hover:border-line-strong hover:text-fg",
+                  )}
+                >
+                  <Icon aria-hidden className="h-4 w-4" strokeWidth={active ? 2.25 : 1.75} />
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
     </header>
   );
 }

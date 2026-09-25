@@ -271,7 +271,8 @@ test("feed: persona filter, order, Dev 3's FeedCard shape, and no answers leaked
 
   const [card] = await feed.getFeed("STUDENT");
   assert.deepEqual(Object.keys(card).sort(), [
-    "after", "before", "clauseId", "emoji", "hook", "id", "kind", "order", "personas", "projectId", "quiz", "sourceUrl", "youMeaning",
+    "after", "before", "categoryTitle", "clauseId", "clauseNumber", "diff", "emoji", "hook", "id", "kind", "order", "personas",
+    "projectId", "projectKind", "projectPublishedAt", "projectTitle", "quiz", "sourceQuote", "sourceUrl", "what", "youMeaning",
   ]);
   assert.equal(card.projectId, s.billId);
   assert.deepEqual(card.quiz[0], { id: "card-student-q1", question: "Асуулт 1?", options: ["А", "Б", "В"] });

@@ -4,7 +4,7 @@ import Link from "next/link";
 export function SiteFooter() {
   return (
     <footer className="mt-16 border-t border-line bg-surface">
-      <div className="mx-auto flex max-w-[1120px] flex-col gap-3 px-4 py-8 text-[14px] text-muted sm:px-6 md:flex-row md:items-center md:justify-between">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-3 px-4 py-8 text-[14px] text-muted sm:px-6 md:flex-row md:items-center md:justify-between">
         <p>Энэ платформыг 12-р ангийн сурагчид бүтээв.</p>
         <p>
           Өгөгдлийн эх сурвалж:{" "}
