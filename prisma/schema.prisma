@@ -38,6 +38,39 @@ enum ProjectSource {
   UPLOAD
 }
 
+// ── AI урсгалд нэмсэн төрлүүд (CLAUDE.md "Shared types") ──
+
+// Хэлэлцэх эсэх | Анхны хэлэлцүүлэг | Эцсийн хэлэлцүүлэг | Эцэслэн батлах
+enum BillStage {
+  DISCUSS_DECISION
+  FIRST_READING
+  FINAL_READING
+  FINAL_APPROVAL
+}
+
+// Заалт нэмсэн | хассан | өөрчилсөн | өөрчлөгдөөгүй
+enum ChangeType {
+  ADDED
+  REMOVED
+  CHANGED
+  UNCHANGED
+}
+
+// Хамааралтай | Сэдвээс гадуур | Утгагүй/доромжилсон | Давхардсан
+enum FilterStatus {
+  RELEVANT
+  OFF_TOPIC
+  ABUSIVE
+  DUPLICATE
+}
+
+// Хүлээгдэж буй | Тусгасан | Тусгаагүй
+enum Reflection {
+  PENDING
+  REFLECTED
+  NOT_REFLECTED
+}
+
 model User {
   id              String         @id @default(cuid())
   clerkId         String         @unique
@@ -66,6 +99,11 @@ model Project {
   allowComments Boolean       @default(true)
   lawforumStats Json? 
   source        ProjectSource @default(LAWFORUM)
+  // Ажилтан оруулсан хуулийн төсөл (AI урсгал)
+  billStage      BillStage?
+  currentLawText String? // одоо мөрдөж буй хууль
+  amendmentText  String? // нэмэлт, өөрчлөлтийн төсөл
+  reasonText     String? // төслийн үндэслэл, танилцуулга
   clauses       Clause[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -79,8 +117,19 @@ model Clause {
   number       String 
   heading      String?
   originalText String
-  plainText    String? 
+  plainText    String?
   order        Int
+  // Харьцуулалт + AI тайлбар
+  oldText      String? // хуучин заалт (нэмсэн заалтад null)
+  newText      String? // шинэ заалт (хассан заалтад null)
+  changeType   ChangeType @default(UNCHANGED)
+  diff         Json? // үгийн түвшний ялгаа: [{ value, added?, removed? }]
+  sourceQuote  String? // төслөөс үг үсгээр нь авсан ишлэл
+  what         String?
+  why          String?
+  who          String?
+  approved     Boolean    @default(false)
+  applyError   String? // өөрчлөлтийг хэрэгжүүлж чадаагүй бол шалтгаан
   comments     Comment[]
   clusters     Cluster[]
 
@@ -115,6 +164,10 @@ model Comment {
   clusterId      String?
   cluster        Cluster?      @relation(fields: [clusterId], references: [id], onDelete: SetNull)
   suspicious     Boolean       @default(false)
+  // AI шүүлт (юу ч устгахгүй, зөвхөн шошго)
+  filterStatus   FilterStatus  @default(RELEVANT)
+  filterReason   String?
+  filteredAt     DateTime? // null = хараахан шүүгээгүй шинэ санал
   createdAt      DateTime      @default(now())
 
   @@index([clauseId])
@@ -127,6 +180,7 @@ model Reply {
   cluster       Cluster        @relation(fields: [clusterId], references: [id], onDelete: Cascade)
   aiDraft       String?
   finalText     String?
+  reflection    Reflection     @default(PENDING) // Тусгасан / Тусгаагүй
   approvedById  String?
   approvedBy    User?          @relation("ApprovedBy", fields: [approvedById], references: [id])
   approvedAt    DateTime?

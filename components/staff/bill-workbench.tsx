@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import type { BillDetail, ChangeType } from "@/lib/mock";
+import type { BillDetail, ChangeType, FilterStatus } from "@/lib/mock";
 import { StageBar } from "@/components/law/stage-bar";
 import { ClauseCompare } from "@/components/law/clause-compare";
 import { ChangeBadge } from "@/components/law/change-badge";
@@ -19,7 +20,18 @@ const filters: Array<{ key: Filter; label: string }> = [
   { key: "CHANGED", label: "Өөрчилсөн" },
 ];
 
-export function BillWorkbench({ bill }: { bill: BillDetail }) {
+// Шүүлтийн шошгын монгол нэр
+const filterLabels: Record<FilterStatus, string> = {
+  RELEVANT: "Хамааралтай",
+  OFF_TOPIC: "Сэдвээс гадуур",
+  ABUSIVE: "Утгагүй / доромжилсон",
+  DUPLICATE: "Давхардсан",
+};
+
+// live=true бол товчнууд DB-д хадгална. Демо (mock) төсөлд false.
+export function BillWorkbench({ bill, live = false }: { bill: BillDetail; live?: boolean }) {
+  const router = useRouter();
+  const [grouping, setGrouping] = useState(false);
   const [tab, setTab] = useState<Tab>("compare");
   const [filter, setFilter] = useState<Filter>("ALL");
   const [approved, setApproved] = useState<Record<string, boolean>>(
@@ -43,14 +55,68 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
 
   const toggleApprove = useCallback(
     (id: string) => {
-      setApproved((s) => {
-        const next = !s[id];
-        flash(next ? "✓ Заалт батлагдлаа" : "Батлалт цуцлагдав");
-        return { ...s, [id]: next };
+      const next = !approved[id];
+      setApproved((s) => ({ ...s, [id]: next }));
+      flash(next ? "✓ Заалт батлагдлаа" : "Батлалт цуцлагдав");
+      if (!live) return;
+      // DB-д хадгална. Алдаа гарвал буцаана.
+      fetch(`/api/clauses/${id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: next }),
+      }).then((res) => {
+        if (!res.ok) {
+          setApproved((s) => ({ ...s, [id]: !next }));
+          flash("Хадгалж чадсангүй");
+        }
       });
     },
-    [flash],
+    [approved, flash, live],
   );
+
+  // "Санал бүлэглэх": шинэ саналуудыг AI-аар шүүж → бүлэглэж → хариуны ноорог бичнэ
+  async function runGrouping() {
+    if (!live) {
+      flash("Демо төсөлд бүлэглэх боломжгүй");
+      return;
+    }
+    setGrouping(true);
+    try {
+      const res = await fetch(`/api/bills/${bill.id}/group`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        flash(data.error ?? "Алдаа гарлаа");
+      } else {
+        flash(`${data.newComments} шинэ санал · ${data.filtered} шүүгдсэн · ${data.groups} шинэ бүлэг`);
+        router.refresh();
+      }
+    } catch {
+      flash("Алдаа гарлаа");
+    }
+    setGrouping(false);
+  }
+
+  // Шүүгдсэн саналыг буцааж хамааралтай болгоно
+  async function restoreComment(commentId: string) {
+    const res = await fetch(`/api/comments/${commentId}/restore`, { method: "POST" });
+    if (res.ok) {
+      flash("Сэргээлээ. Дараагийн бүлэглэлтэд орно.");
+      router.refresh();
+    } else {
+      flash("Сэргээж чадсангүй");
+    }
+  }
+
+  // Тоолуур: N санал → M шүүгдсэн → K бүлэг
+  let groupedCommentCount = 0;
+  let filteredCount = 0;
+  let groupCount = 0;
+  for (const c of bill.clauses) {
+    filteredCount += c.filtered.length;
+    groupCount += c.groups.length;
+    for (const g of c.groups) groupedCommentCount += g.commentCount;
+  }
+  const totalCommentCount = groupedCommentCount + filteredCount;
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -127,13 +193,8 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
             value={unapprovedCount}
             tone={unapprovedCount ? "warn" : "good"}
           />
-          <Metric
-            label="Иргэдийн санал"
-            value={bill.clauses.reduce(
-              (a, c) => a + c.groups.reduce((b, g) => b + g.commentCount, 0),
-              0,
-            )}
-          />
+          <Metric label="Иргэдийн санал" value={totalCommentCount} />
+          <Metric label="Шүүгдсэн" value={filteredCount} />
         </div>
       </section>
 
@@ -258,6 +319,12 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                       </button>
                     </header>
 
+                    {c.applyError ? (
+                      <div className="mt-3 rounded-lg border border-gold-300 bg-gold-100/60 p-2.5 text-[12px] font-medium text-ink-900">
+                        ⚠️ Автоматаар хэрэгжүүлж чадсангүй: {c.applyError} Гараар шалгана уу.
+                      </div>
+                    ) : null}
+
                     <div className="mt-4">
                       <ClauseCompare
                         oldText={c.oldText}
@@ -283,11 +350,20 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
       ) : (
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[12.5px] text-ink-500">
-              Иргэдийн саналыг AI-аар агуулгаар нь бүлэглэсэн. Ноорог хариу
-              засаад «Тусгасан / Тусгаагүй» сонго.
-            </p>
-            <button className="inline-flex items-center gap-2 rounded-full bg-parliament-700 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-parliament-800">
+            <div>
+              <p className="text-[12.5px] text-ink-500">
+                Иргэдийн саналыг AI-аар шүүж, агуулгаар нь бүлэглэсэн. Ноорог хариу
+                засаад «Тусгасан / Тусгаагүй» сонго.
+              </p>
+              <p className="mt-1 text-[13px] font-semibold text-parliament-900">
+                {totalCommentCount} санал → {filteredCount} шүүгдсэн → {groupCount} бүлэг
+              </p>
+            </div>
+            <button
+              onClick={runGrouping}
+              disabled={grouping}
+              className="inline-flex items-center gap-2 rounded-full bg-parliament-700 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-parliament-800 disabled:opacity-60"
+            >
               <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                 <path
                   d="M15 8A5 5 0 0 0 6 5l-2 3M5 12a5 5 0 0 0 9 3l2-3"
@@ -297,12 +373,18 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                   strokeLinejoin="round"
                 />
               </svg>
-              Санал бүлэглэх
+              {grouping ? "AI ажиллаж байна..." : "Санал бүлэглэх"}
             </button>
           </div>
 
+          {bill.clauses.every((c) => !c.groups.length && !c.filtered.length) ? (
+            <div className="rounded-2xl border border-dashed border-ink-100 bg-white p-10 text-center text-[13px] text-ink-500">
+              Бүлэглэсэн санал алга. Иргэд санал өгсний дараа «Санал бүлэглэх» товчийг дарна уу.
+            </div>
+          ) : null}
+
           {bill.clauses
-            .filter((c) => c.groups.length)
+            .filter((c) => c.groups.length || c.filtered.length)
             .map((c) => (
               <section key={c.id} className="flex flex-col gap-3">
                 <header className="flex items-center gap-2 border-b border-ink-100 pb-2">
@@ -317,9 +399,43 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                 </header>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {c.groups.map((g) => (
-                    <GroupCard key={g.id} group={g} />
+                    <GroupCard key={g.id} group={g} live={live} />
                   ))}
                 </div>
+
+                {c.filtered.length ? (
+                  <details className="rounded-xl border border-ink-100 bg-white p-3">
+                    <summary className="cursor-pointer text-[12px] font-semibold text-ink-700">
+                      Шүүгдсэн ({c.filtered.length})
+                    </summary>
+                    <ul className="mt-2 flex flex-col gap-2">
+                      {c.filtered.map((f) => (
+                        <li
+                          key={f.id}
+                          className="flex flex-wrap items-start gap-2 rounded-lg bg-ink-100/40 p-2.5"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[10.5px] font-semibold uppercase tracking-wider text-rose-700">
+                              {filterLabels[f.filterStatus]}
+                            </div>
+                            <p className="mt-0.5 text-[12.5px] text-ink-900">«{f.text}»</p>
+                            {f.filterReason ? (
+                              <p className="mt-0.5 text-[11.5px] text-ink-500">{f.filterReason}</p>
+                            ) : null}
+                          </div>
+                          {live ? (
+                            <button
+                              onClick={() => restoreComment(f.id)}
+                              className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-parliament-700 ring-1 ring-inset ring-parliament-200 hover:bg-parliament-50"
+                            >
+                              Сэргээх
+                            </button>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
               </section>
             ))}
         </div>

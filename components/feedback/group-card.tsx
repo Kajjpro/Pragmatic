@@ -5,13 +5,29 @@ import { cn } from "@/lib/cn";
 import type { GroupView, Reflection } from "@/lib/mock";
 import { ReflectionBadge } from "./reflection-badge";
 
-export function GroupCard({ group }: { group: GroupView }) {
+// live=true бол хариу + Тусгасан/Тусгаагүй-г DB-д хадгална. Демо (mock) бүлэгт false.
+export function GroupCard({ group, live = false }: { group: GroupView; live?: boolean }) {
   const [reflection, setReflection] = useState<Reflection>(group.reflection);
   const [text, setText] = useState(group.replyText ?? group.replyDraft ?? "");
   const [saved, setSaved] = useState(Boolean(group.replyText));
+  const [error, setError] = useState<string | null>(null);
 
-  function decide(next: Reflection) {
+  async function decide(next: Reflection) {
     setReflection(next);
+    setError(null);
+    if (live) {
+      // Засварласан хариу + шийдвэрийг хадгална → иргэн "Миний санал" хэсэгт харна
+      const res = await fetch(`/api/groups/${group.id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ replyText: text, reflection: next }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Хадгалж чадсангүй");
+        return;
+      }
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   }
@@ -27,6 +43,9 @@ export function GroupCard({ group }: { group: GroupView }) {
           <span className="ml-auto text-[10.5px] font-semibold text-emerald-700">
             ✓ Хадгаллаа
           </span>
+        ) : null}
+        {error ? (
+          <span className="ml-auto text-[10.5px] font-semibold text-rose-700">{error}</span>
         ) : null}
       </header>
 

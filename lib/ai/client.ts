@@ -83,8 +83,10 @@ async function askGemini(prompt: string, model: string) {
         console.log(`${model} алдаа (${attempt}-р оролдлого):`, String(error).slice(0, 200));
         throw error;
       }
-      console.log(`${model} завгүй (${attempt}-р оролдлого), 5 секунд хүлээнэ...`);
-      await wait(5000);
+      // 429 = минутын лимит хэтэрсэн → минут дуусахыг 20 секунд хүлээнэ. 503 = түр ачаалал → 5 секунд.
+      const seconds = String(error).includes("429") ? 20 : 5;
+      console.log(`${model} завгүй (${attempt}-р оролдлого), ${seconds} секунд хүлээнэ...`);
+      await wait(seconds * 1000);
     }
   }
   throw new Error("Gemini хариу өгсөнгүй");

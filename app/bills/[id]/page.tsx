@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { mockBill } from "@/lib/mock";
+import { getBillDetail } from "@/lib/law/queries";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CommentForm } from "@/components/feedback/comment-form";
@@ -12,6 +12,7 @@ import { ChangeExplain } from "@/components/law/change-explain";
 import { ChangeBadge } from "@/components/law/change-badge";
 import { ReflectionBadge } from "@/components/feedback/reflection-badge";
 
+// Толгой хэсгийн мэдээлэл + заалт бүрийн саналын тоо
 async function loadBill(id: string) {
   return prisma.project.findUnique({
     where: { id },
@@ -26,17 +27,13 @@ async function loadBill(id: string) {
   });
 }
 
-// Заалтын дугаар (14.2 гэх мэт) дээр үндэслэн mock-той нэгтгэж diff/explain-ыг гаргаж авна.
-function mockByNumber(number: string) {
-  return mockBill.clauses.find((c) => c.number === number) ?? null;
-}
-
 export default async function BillPage({
   params,
 }: PageProps<"/bills/[id]">) {
   const { id } = await params;
   const bill = await loadBill(id);
   if (!bill) notFound();
+  const detail = await getBillDetail(id, false);
 
   const { userId } = await auth();
   const signedIn = Boolean(userId);
@@ -71,7 +68,7 @@ export default async function BillPage({
             </p>
           ) : null}
           <div className="mt-5">
-            <StageBar current={mockBill.stage} size="sm" />
+            <StageBar current={detail?.stage ?? "FIRST_READING"} size="sm" />
           </div>
         </div>
       </section>
@@ -85,7 +82,7 @@ export default async function BillPage({
         ) : (
           <ol className="flex flex-col gap-4">
             {bill.clauses.map((clause) => {
-              const overlay = mockByNumber(clause.number);
+              const overlay = detail?.clauses.find((c) => c.id === clause.id) ?? null;
               const hasDiff = overlay && overlay.changeType !== "UNCHANGED";
               return (
                 <li
@@ -123,7 +120,7 @@ export default async function BillPage({
                     </p>
                   )}
 
-                  {overlay ? (
+                  {hasDiff ? (
                     <div className="mt-4">
                       <ChangeExplain
                         what={overlay.what}

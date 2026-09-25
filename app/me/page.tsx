@@ -4,6 +4,9 @@ import { getUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusPill } from "@/components/ui/status-pill";
+import { ReflectionBadge } from "@/components/feedback/reflection-badge";
+import { ClauseCompare } from "@/components/law/clause-compare";
+import { compareWords } from "@/lib/law/compare";
 
 // Хэрэглэгчийн саналыг бүлэг + хариутай нь татна.
 // Dev 1-ийн /api/me/comments бэлэн болмогц энд шилжүүлнэ.
@@ -15,6 +18,8 @@ async function loadMyComments(userId: string) {
       clause: {
         select: {
           number: true,
+          oldText: true,
+          newText: true,
           project: { select: { id: true, title: true } },
         },
       },
@@ -22,7 +27,7 @@ async function loadMyComments(userId: string) {
         select: {
           label: true,
           summary: true,
-          reply: { select: { finalText: true, approvedAt: true } },
+          reply: { select: { finalText: true, approvedAt: true, reflection: true } },
         },
       },
     },
@@ -80,6 +85,11 @@ export default async function MePage() {
             {comments.map((c) => {
               const reply = c.cluster?.reply?.finalText ?? null;
               const answered = Boolean(reply);
+              const reflection = c.cluster?.reply?.reflection ?? "PENDING";
+              // Заалт өөрчлөгдсөн бол өмнө/дараа харуулна
+              const clauseChanged =
+                (c.clause.oldText !== null || c.clause.newText !== null) &&
+                c.clause.oldText !== c.clause.newText;
               return (
                 <li
                   key={c.id}
@@ -95,6 +105,16 @@ export default async function MePage() {
                   <p className="mt-3 text-[13.5px] leading-relaxed text-ink-900">
                     {c.body}
                   </p>
+
+                  {clauseChanged ? (
+                    <div className="mt-3">
+                      <ClauseCompare
+                        oldText={c.clause.oldText}
+                        newText={c.clause.newText}
+                        diff={compareWords(c.clause.oldText, c.clause.newText)}
+                      />
+                    </div>
+                  ) : null}
 
                   {c.cluster ? (
                     <div className="mt-3 rounded-xl bg-parliament-50/60 p-3 text-[12px]">
@@ -117,7 +137,8 @@ export default async function MePage() {
                   {answered ? (
                     <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[12.5px] leading-relaxed text-emerald-900">
                       <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
-                        ✅ Комисс хариу өгсөн
+                        Комиссын хариу
+                        <ReflectionBadge value={reflection} />
                       </div>
                       {reply}
                     </div>

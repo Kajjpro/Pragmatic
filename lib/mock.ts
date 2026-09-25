@@ -11,6 +11,15 @@ export type Stage =
 export type ChangeType = "ADDED" | "REMOVED" | "CHANGED" | "UNCHANGED";
 export type Reflection = "PENDING" | "REFLECTED" | "NOT_REFLECTED";
 export type WordPart = { value: string; added?: boolean; removed?: boolean };
+export type FilterStatus = "RELEVANT" | "OFF_TOPIC" | "ABUSIVE" | "DUPLICATE";
+
+// Шүүгдсэн санал (зөвхөн ажилтанд харагдана)
+export type FilteredCommentView = {
+  id: string;
+  text: string;
+  filterStatus: FilterStatus;
+  filterReason: string;
+};
 
 export type BillSummary = {
   id: string;
@@ -20,6 +29,7 @@ export type BillSummary = {
   unapprovedCount: number;
   commentCount: number;
   unansweredGroupCount: number;
+  filteredCount: number;
 };
 
 export type GroupView = {
@@ -44,7 +54,9 @@ export type ClauseView = {
   why: string | null;
   who: string | null;
   approved: boolean;
+  applyError: string | null; // өөрчлөлтийг хэрэгжүүлж чадаагүй бол шалтгаан
   groups: GroupView[];
+  filtered: FilteredCommentView[]; // зөвхөн ажилтанд; иргэнд хоосон
 };
 
 export type BillDetail = {
@@ -73,7 +85,7 @@ function diff(oldText: string | null, newText: string | null): WordPart[] {
 }
 
 function makeClause(
-  input: Omit<ClauseView, "diff" | "changeType"> & {
+  input: Omit<ClauseView, "diff" | "changeType" | "applyError" | "filtered"> & {
     changeType?: ChangeType;
   },
 ): ClauseView {
@@ -89,7 +101,7 @@ function makeClause(
       changeType = "CHANGED";
     else changeType = "UNCHANGED";
   }
-  return { ...input, diff: diffParts, changeType };
+  return { ...input, diff: diffParts, changeType, applyError: null, filtered: [] };
 }
 
 export const MOCK_BILL_ID = "mock-hodolmor-2026";
@@ -213,6 +225,7 @@ export const mockBillSummary: BillSummary = {
     (a, c) => a + c.groups.filter((g) => !g.replyText).length,
     0,
   ),
+  filteredCount: 0,
 };
 
 export function getMockBill(id: string): BillDetail | null {
