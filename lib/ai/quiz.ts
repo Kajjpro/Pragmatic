@@ -18,6 +18,7 @@ export type QuizQuestion = {
   options: string[]; // 3-4 богино хариулт
   correctIndex: number; // зөв хариултын байрлал (0-оос эхэлнэ)
   explanation: string; // яагаад зөв болохыг 1 өгүүлбэрээр
+  keyPhrase?: string; // зөв хариултыг батлах ишлэл (картын текстээс) — хянахад хэрэгтэй
 };
 
 const QUIZ_KINDS: QuizKind[] = ["WHAT_CHANGED", "WHO", "TRUE_FALSE"];
@@ -142,7 +143,7 @@ export function checkQuestion(item: unknown, cardText: string): { question: Quiz
     return { question: null, problem: `картын текстэд байхгүй тоо: ${missing.join(", ")}` };
   }
 
-  return { question: { kind, question: questionText, options, correctIndex, explanation }, problem: "" };
+  return { question: { kind, question: questionText, options, correctIndex, explanation, keyPhrase }, problem: "" };
 }
 
 // AI зөв хариултыг ихэвчлэн эхэнд тавьдаг. Санамсаргүй байрлал руу сольж тавина.
