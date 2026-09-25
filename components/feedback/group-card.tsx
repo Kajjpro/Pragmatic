@@ -46,24 +46,24 @@ export function GroupCard({ group }: { group: GroupView }) {
   const busy = saving !== null;
 
   return (
-    <article className="flex flex-col rounded-2xl border border-ink-100 bg-white p-4 shadow-[0_18px_40px_-30px_rgba(15,42,99,0.3)]">
+    <article className="flex flex-col rounded-2xl border border-ink-200 bg-white p-4 shadow-[0_18px_40px_-30px_rgba(15,42,99,0.3)]">
       <header className="flex flex-wrap items-center gap-2">
         <ReflectionBadge value={group.reflection} />
-        <span className="text-[11px] text-ink-500">
+        <span className="text-[13px] font-semibold text-ink-600">
           {group.commentCount} санал
         </span>
         {group.replyText ? (
-          <span className="ml-auto text-[10.5px] font-semibold text-emerald-700">
+          <span className="ml-auto text-[13px] font-bold text-emerald-700">
             ✓ Хадгалсан
           </span>
         ) : null}
       </header>
 
-      <h4 className="mt-2 text-[13.5px] font-semibold text-ink-900">
+      <h4 className="mt-2.5 text-[16px] font-bold leading-snug text-ink-900">
         {group.title}
       </h4>
       {group.summary ? (
-        <p className="mt-1 text-[12px] leading-relaxed text-ink-500">
+        <p className="mt-1 text-[14px] leading-relaxed text-ink-700">
           {group.summary}
         </p>
       ) : null}
@@ -75,15 +75,15 @@ export function GroupCard({ group }: { group: GroupView }) {
         maxLength={5000}
         disabled={busy}
         placeholder="Комиссын хариу…"
-        className="mt-3 w-full resize-none rounded-lg border border-ink-100 bg-parliament-50/40 px-3 py-2 text-[12.5px] leading-relaxed outline-none transition placeholder:text-ink-500/70 focus:border-parliament-500 focus:bg-white disabled:opacity-60"
+        className="mt-3 w-full resize-none rounded-lg border border-ink-200 bg-brand-50/50 px-3.5 py-2.5 text-[14.5px] leading-relaxed text-ink-900 outline-none transition placeholder:text-ink-500 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-200 disabled:opacity-60"
       />
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[10.5px]">
+        <div className="text-[13px]">
           {error ? (
             <span className="font-semibold text-rose-700">{error}</span>
           ) : (
-            <span className="text-ink-500">
+            <span className="text-ink-600">
               AI ноорог засаад Тусгасан/Тусгаагүй сонго
             </span>
           )}
@@ -94,10 +94,10 @@ export function GroupCard({ group }: { group: GroupView }) {
             onClick={() => save("NOT_REFLECTED")}
             disabled={busy}
             className={cn(
-              "rounded-full px-3 py-1 text-[11px] font-semibold ring-1 ring-inset transition disabled:opacity-60",
+              "press min-h-11 rounded-full px-4 text-[13.5px] font-bold ring-1 ring-inset disabled:opacity-60",
               group.reflection === "NOT_REFLECTED"
-                ? "bg-rose-500 text-white ring-rose-500"
-                : "bg-white text-rose-700 ring-rose-200 hover:bg-rose-50",
+                ? "bg-rose-600 text-white ring-rose-600"
+                : "bg-white text-rose-700 ring-rose-300 hover:bg-rose-50",
             )}
           >
             {saving === "NOT_REFLECTED" ? "Хадгалж байна…" : "Тусгаагүй"}
@@ -107,10 +107,10 @@ export function GroupCard({ group }: { group: GroupView }) {
             onClick={() => save("REFLECTED")}
             disabled={busy}
             className={cn(
-              "rounded-full px-3.5 py-1 text-[11px] font-semibold ring-1 ring-inset transition disabled:opacity-60",
+              "press min-h-11 rounded-full px-4 text-[13.5px] font-bold ring-1 ring-inset disabled:opacity-60",
               group.reflection === "REFLECTED"
-                ? "bg-emerald-500 text-white ring-emerald-500"
-                : "bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50",
+                ? "bg-emerald-600 text-white ring-emerald-600"
+                : "bg-white text-emerald-700 ring-emerald-300 hover:bg-emerald-50",
             )}
           >
             {saving === "REFLECTED" ? "Хадгалж байна…" : "Тусгасан"}

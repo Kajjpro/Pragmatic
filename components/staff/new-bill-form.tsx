@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { stageLabels, stageOrder } from "@/lib/labels";
 
 const inputClass =
-  "w-full rounded-xl border border-ink-100 bg-white px-3.5 py-2.5 text-[13px] text-ink-900 outline-none transition placeholder:text-ink-300 focus:border-parliament-500 disabled:bg-parliament-50/40";
+  "w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-[15px] leading-relaxed text-ink-900 outline-none transition placeholder:text-ink-500 focus:border-parliament-500 focus:ring-2 focus:ring-parliament-200 disabled:bg-parliament-50/40";
 
 export function NewBillForm() {
   const router = useRouter();
@@ -54,7 +54,7 @@ export function NewBillForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-5 rounded-2xl border border-ink-100 bg-white p-6 shadow-[0_20px_45px_-30px_rgba(15,42,99,0.3)]"
+      className="flex flex-col gap-5 rounded-2xl border border-ink-200 bg-white p-5 shadow-[0_20px_45px_-30px_rgba(15,42,99,0.3)] sm:p-6"
     >
       <div className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_260px]">
         <Field label="Төслийн нэр">
@@ -107,21 +107,21 @@ export function NewBillForm() {
       </Field>
 
       {error ? (
-        <p className="rounded-xl bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-800">
+        <p className="rounded-xl border-l-4 border-rose-500 bg-rose-50 px-4 py-3 text-[14.5px] font-medium text-rose-900">
           {error}
         </p>
       ) : null}
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         {busy ? (
-          <p className="text-[12.5px] text-ink-500">
+          <p className="text-[14px] font-medium text-ink-700">
             AI төслийг заалт бүрээр харьцуулж байна… 1–3 минут болно.
           </p>
         ) : null}
         <button
           type="submit"
           disabled={busy}
-          className="inline-flex items-center gap-2 rounded-full bg-parliament-700 px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-parliament-800 disabled:cursor-wait disabled:opacity-60"
+          className="press inline-flex min-h-12 items-center gap-2 rounded-full bg-gold-400 px-6 text-[15px] font-bold text-parliament-950 shadow-[0_8px_24px_-8px_rgba(255,198,7,0.6)] hover:bg-gold-300 disabled:cursor-wait disabled:opacity-60"
         >
           {busy ? "Харьцуулж байна…" : "Харьцуулалт үүсгэх"}
         </button>
@@ -142,8 +142,10 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[12.5px] font-semibold text-parliament-900">{label}</span>
-      {hint ? <span className="text-[11.5px] text-ink-500">{hint}</span> : null}
+      <span className="text-[15px] font-bold text-parliament-900">{label}</span>
+      {hint ? (
+        <span className="text-[13.5px] leading-relaxed text-ink-600">{hint}</span>
+      ) : null}
       {children}
     </label>
   );

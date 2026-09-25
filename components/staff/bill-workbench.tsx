@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import type { BillDetail, ChangeType } from "@/lib/mock";
+import type { BillDetail } from "@/lib/law/queries";
+import type { ChangeType } from "@/lib/law/types";
 import { StageBar } from "@/components/law/stage-bar";
 import { ClauseCompare } from "@/components/law/clause-compare";
 import { ChangeBadge } from "@/components/law/change-badge";
@@ -20,6 +22,7 @@ const filters: Array<{ key: Filter; label: string }> = [
 ];
 
 export function BillWorkbench({ bill }: { bill: BillDetail }) {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("compare");
   const [filter, setFilter] = useState<Filter>("ALL");
   const [approved, setApproved] = useState<Record<string, boolean>>(
@@ -27,6 +30,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
   );
   const [active, setActive] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  const [grouping, setGrouping] = useState(false);
 
   const filtered = useMemo(() => {
     return bill.clauses.filter((c) => {
@@ -41,16 +45,51 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
     setTimeout(() => setToast(null), 1500);
   }, []);
 
+  // Батлах товч — DB-д хадгална. Иргэн зөвхөн батлагдсан заалтыг хардаг тул
+  // энэ нь заавал сервер рүү очих ёстой.
   const toggleApprove = useCallback(
-    (id: string) => {
-      setApproved((s) => {
-        const next = !s[id];
+    async (id: string) => {
+      const next = !approved[id];
+      setApproved((s) => ({ ...s, [id]: next })); // шууд харагдана
+      try {
+        const res = await fetch(`/api/clauses/${id}/approve`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ approved: next }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          setApproved((s) => ({ ...s, [id]: !next })); // алдаа гарвал буцаана
+          flash(data?.error ?? "Хадгалахад алдаа гарлаа");
+          return;
+        }
         flash(next ? "✓ Заалт батлагдлаа" : "Батлалт цуцлагдав");
-        return { ...s, [id]: next };
-      });
+      } catch {
+        setApproved((s) => ({ ...s, [id]: !next }));
+        flash("Сүлжээний алдаа. Дахин оролдоно уу.");
+      }
     },
-    [flash],
+    [approved, flash],
   );
+
+  // AI-аар шүүж, бүлэглэж, ноорог хариу бичүүлнэ. Дараа нь хуудсыг шинэчилнэ.
+  const runGrouping = useCallback(async () => {
+    setGrouping(true);
+    try {
+      const res = await fetch(`/api/bills/${bill.id}/group`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        flash(data?.error ?? "Бүлэглэхэд алдаа гарлаа");
+        return;
+      }
+      flash("✓ Санал бүлэглэгдлээ");
+      router.refresh();
+    } catch {
+      flash("Сүлжээний алдаа. Дахин оролдоно уу.");
+    } finally {
+      setGrouping(false);
+    }
+  }, [bill.id, flash, router]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -85,14 +124,14 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
       <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_20px_45px_-30px_rgba(15,42,99,0.3)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-parliament-500">
-              Ажлын ширээ · {bill.id}
+            <div className="text-[12px] font-bold uppercase tracking-[0.12em] text-parliament-600">
+              Ажлын ширээ
             </div>
             <h1 className="mt-1 font-editorial text-2xl font-medium text-parliament-900">
               {bill.title}
             </h1>
             {bill.reasonText ? (
-              <p className="mt-2 text-[13px] leading-relaxed text-ink-500">
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-700">
                 {bill.reasonText}
               </p>
             ) : null}
@@ -100,7 +139,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
           <div className="flex items-center gap-2">
             <a
               href={`/api/bills/${bill.id}/word`}
-              className="inline-flex items-center gap-2 rounded-full bg-parliament-700 px-4 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:bg-parliament-800"
+              className="press inline-flex min-h-11 items-center gap-2 rounded-full bg-parliament-700 px-4 text-[13px] font-semibold text-white shadow-sm hover:bg-parliament-800"
             >
               <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                 <path
@@ -145,15 +184,15 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
               key={t}
               onClick={() => setTab(t)}
               className={cn(
-                "relative -mb-px px-4 py-2.5 text-[13px] font-semibold transition",
+                "press relative -mb-px min-h-11 px-4 text-[14px] font-semibold",
                 tab === t
-                  ? "text-parliament-700"
-                  : "text-ink-500 hover:text-parliament-700",
+                  ? "text-parliament-900"
+                  : "text-ink-600 hover:text-parliament-700",
               )}
             >
               {t === "compare" ? "Харьцуулалт" : "Иргэдийн санал"}
               {tab === t ? (
-                <span className="absolute inset-x-3 -bottom-px h-[3px] rounded-full bg-parliament-700" />
+                <span className="absolute inset-x-3 -bottom-px h-[3px] rounded-full bg-gold-400" />
               ) : null}
             </button>
           ))}
@@ -179,19 +218,19 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                   key={f.key}
                   onClick={() => setFilter(f.key)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11.5px] font-semibold transition",
+                    "press inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold",
                     filter === f.key
-                      ? "border-parliament-700 bg-parliament-700 text-white"
-                      : "border-ink-100 bg-white text-ink-700 hover:border-parliament-500 hover:text-parliament-700",
+                      ? "border-gold-400 bg-gold-400 text-parliament-950 shadow-sm"
+                      : "border-ink-200 bg-white text-ink-700 hover:border-parliament-400 hover:text-parliament-700",
                   )}
                 >
                   {f.label}
                   <span
                     className={cn(
-                      "rounded-full px-1.5 text-[10px] font-bold",
+                      "rounded-full px-1.5 text-[11px] font-bold tabular-nums",
                       filter === f.key
-                        ? "bg-white/20 text-white"
-                        : "bg-ink-100 text-ink-500",
+                        ? "bg-parliament-950/15 text-parliament-950"
+                        : "bg-ink-100 text-ink-600",
                     )}
                   >
                     {count}
@@ -203,7 +242,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
 
           {/* Clause cards */}
           {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-ink-100 bg-white p-10 text-center text-[13px] text-ink-500">
+            <div className="rounded-2xl border border-dashed border-ink-200 bg-white p-10 text-center text-[14px] text-ink-600">
               Тохирох заалт алга. Шүүлтүүрээ өөрчилнө үү.
             </div>
           ) : (
@@ -216,19 +255,19 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                     key={c.id}
                     onClick={() => setActive(i)}
                     className={cn(
-                      "cursor-pointer rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,42,99,0.3)] transition",
+                      "card-lift cursor-pointer rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,42,99,0.3)]",
                       isActive
-                        ? "border-parliament-500 ring-2 ring-parliament-100"
-                        : "border-ink-100 hover:border-parliament-200",
+                        ? "border-gold-400 ring-2 ring-gold-200"
+                        : "border-ink-200 hover:border-parliament-300 hover:shadow-[0_24px_50px_-30px_rgba(15,42,99,0.45)]",
                     )}
                   >
                     <header className="flex flex-wrap items-center gap-2">
                       <span
                         className={cn(
-                          "grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold",
+                          "grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold tabular-nums",
                           isActive
-                            ? "bg-parliament-700 text-white"
-                            : "bg-ink-100 text-ink-500",
+                            ? "bg-gold-400 text-parliament-950"
+                            : "bg-ink-100 text-ink-600",
                         )}
                       >
                         {i + 1}
@@ -248,10 +287,10 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                           toggleApprove(c.id);
                         }}
                         className={cn(
-                          "ml-auto rounded-full px-3.5 py-1 text-[11px] font-semibold transition",
+                          "press ml-auto min-h-11 rounded-full px-4 text-[13px] font-bold",
                           isApproved
                             ? "bg-ink-100 text-ink-700 hover:bg-ink-200"
-                            : "bg-parliament-700 text-white hover:bg-parliament-800",
+                            : "bg-gold-400 text-parliament-950 shadow-sm hover:bg-gold-300",
                         )}
                       >
                         {isApproved ? "Цуцлах" : "Батлах"}
@@ -267,8 +306,8 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                     </div>
 
                     {c.sourceQuote ? (
-                      <div className="mt-3 rounded-lg bg-parliament-50/60 p-2.5 text-[11.5px] italic text-parliament-900">
-                        <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider not-italic text-parliament-500">
+                      <div className="mt-3 rounded-lg bg-parliament-50 p-3 text-[13px] italic text-parliament-900">
+                        <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider not-italic text-parliament-600">
                           Эх сурвалж
                         </span>
                         «{c.sourceQuote}»
@@ -283,11 +322,15 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
       ) : (
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[12.5px] text-ink-500">
+            <p className="max-w-xl text-[14px] leading-relaxed text-ink-700">
               Иргэдийн саналыг AI-аар агуулгаар нь бүлэглэсэн. Ноорог хариу
               засаад «Тусгасан / Тусгаагүй» сонго.
             </p>
-            <button className="inline-flex items-center gap-2 rounded-full bg-parliament-700 px-4 py-2 text-[12px] font-semibold text-white transition hover:bg-parliament-800">
+            <button
+              onClick={runGrouping}
+              disabled={grouping}
+              className="press inline-flex min-h-11 items-center gap-2 rounded-full bg-gold-400 px-4 text-[13px] font-bold text-parliament-950 shadow-sm hover:bg-gold-300 disabled:opacity-60"
+            >
               <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                 <path
                   d="M15 8A5 5 0 0 0 6 5l-2 3M5 12a5 5 0 0 0 9 3l2-3"
@@ -297,7 +340,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                   strokeLinejoin="round"
                 />
               </svg>
-              Санал бүлэглэх
+              {grouping ? "Бүлэглэж байна…" : "Санал бүлэглэх"}
             </button>
           </div>
 
@@ -309,7 +352,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                   <span className="rounded-md bg-parliament-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-parliament-700">
                     {c.number}
                   </span>
-                  <span className="text-[12px] font-medium text-ink-700">
+                  <span className="text-[13px] font-medium text-ink-700">
                     {c.groups.length} бүлэг ·{" "}
                     {c.groups.reduce((a, g) => a + g.commentCount, 0).toLocaleString("mn-MN")}{" "}
                     санал
@@ -348,7 +391,7 @@ function Metric({
 }) {
   const c = {
     neutral: "bg-parliament-50 text-parliament-800",
-    warn: "bg-gold-100 text-gold-500",
+    warn: "bg-gold-100 text-gold-700",
     good: "bg-emerald-100 text-emerald-800",
   }[tone];
   return (
