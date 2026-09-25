@@ -39,6 +39,14 @@ function findText(id: string): string {
   return "(олдсонгүй)";
 }
 
+// Текстэд хэдэн үг байгааг тоолно (зайгаар нь хуваана)
+function countWords(text: string): number {
+  if (text.trim() === "") {
+    return 0;
+  }
+  return text.trim().split(/\s+/).length;
+}
+
 async function main() {
   console.log("AI_STUB =", process.env.AI_STUB || "(тохируулаагүй)");
   console.log("Заалт:", CLAUSE_TEXT);
@@ -58,7 +66,7 @@ async function main() {
   // 3. Бүлэг бүрийг хэвлээд, хариу бичүүлнэ
   for (let i = 0; i < groups.length; i++) {
     const group = groups[i];
-    console.log(`══ Бүлэг ${i + 1}: ${group.title} (${group.commentIds.length} санал)`);
+    console.log(`══ Бүлэг ${i + 1}: ${group.title} [${countWords(group.title)} үг] (${group.commentIds.length} санал)`);
     console.log(`   Товч: ${group.summary}`);
 
     // Бүлгийн саналуудын текстийг цуглуулна
@@ -78,7 +86,7 @@ async function main() {
         summary: group.summary,
         examples: texts.slice(0, 3),
       });
-      console.log(`   ✉ Хариуны ноорог: ${reply}`);
+      console.log(`   ✉ Хариуны ноорог (${countWords(reply)} үг): ${reply}`);
     } catch {
       console.log("   ✉ Хариу бичиж чадсангүй (Gemini алдаа).");
     }

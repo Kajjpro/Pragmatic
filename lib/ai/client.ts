@@ -5,7 +5,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // 1. Gemini-тэй холбогдох. Түлхүүр ба загварын нэрийг .env-ээс уншина.
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.7-flash";
 
 // 2. Хэдэн миллисекунд хүлээх жижиг туслах функц
 function wait(ms: number) {
@@ -50,7 +50,9 @@ export async function askGeminiJSON(prompt: string) {
         throw error;
       }
 
-      console.log(`Gemini завгүй байна (${attempt}-р оролдлого), ${attempt * 5} секунд хүлээгээд дахин оролдоно...`);
+      console.log(
+        `Gemini завгүй байна (${attempt}-р оролдлого), ${attempt * 5} секунд хүлээгээд дахин оролдоно...`
+      );
       await wait(attempt * 5000);
     }
   }

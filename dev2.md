@@ -1,6 +1,6 @@
 # DEV 2 — AI + demo data (Kajusi)
 
-> Товчхондоо: Чи 4 AI функц хийнэ: ойлгох (`readAmendment`), тайлбарлах (`explainChange`), бүлэглэх (`groupComments`), хариулах (`writeReply`). Мөн демо өгөгдөл бэлтгэнэ. Хамгийн чухал нь `readAmendment` — энэ буруу бол бүх харьцуулалт буруу болно.
+> Товчхондоо: Чи 5 AI функц хийнэ: ойлгох (`readAmendment`), тайлбарлах (`explainChange`), шүүх (`filterComments`), бүлэглэх (`groupComments`), хариулах (`writeReply`). Мөн демо өгөгдөл бэлтгэнэ. Хамгийн чухал нь `readAmendment` — энэ буруу бол бүх харьцуулалт буруу болно.
 
 Read `CLAUDE.md` first.
 
@@ -80,9 +80,26 @@ export async function explainChange(
 - `why`: only from `reasonText`; else "Шалтгааныг төсөлд дурдаагүй."
 - `who`: which groups are affected (e.g. "Жолооч нар", "Аж ахуйн нэгжүүд", "Бүх иргэд").
 
-## Task 4 — `groupComments` + `writeReply` (hours 6–8)
+## Task 4 — `filterComments` + `groupComments` + `writeReply` (hours 6–8)
 
 File: `lib/ai/comments.ts`
+
+**Problem (from MP mentors):** public comments contain many irrelevant / unnecessary words and ideas; staff delete them by hand.
+
+```ts
+export type FilterStatus = "RELEVANT" | "OFF_TOPIC" | "ABUSIVE" | "DUPLICATE";
+export async function filterComments(
+  clauseText: string,
+  comments: { id: string; text: string }[]
+): Promise<{ id: string; status: FilterStatus; reason: string }[]>;
+```
+
+- OFF_TOPIC: not about this clause (e.g. "замаа засаач" on a tax clause).
+- ABUSIVE: insults, nonsense, spam.
+- DUPLICATE: same text as another comment (detect exact/near-exact duplicates **in code** first, before calling AI).
+- `reason`: one short Mongolian sentence.
+- **Never delete. Only label.** When unsure → RELEVANT (better to show staff a bit more than hide a real opinion).
+- Missing ids in AI output → RELEVANT.
 
 ```ts
 export async function groupComments(
@@ -91,8 +108,9 @@ export async function groupComments(
 ): Promise<{ title: string; summary: string; commentIds: string[] }[]>;
 ```
 
+- Input: only RELEVANT comments.
 - 2–5 groups, title ≤ 6 words, every comment in exactly one group.
-- In code: drop unknown ids; put missing ids into a group "Бусад".
+- In code: drop unknown ids; put missing ids into a group "Бусад"; if more than 5 groups, merge the smallest into "Бусад".
 
 File: `lib/ai/reply.ts`
 
@@ -107,15 +125,26 @@ export async function writeReply(
 
 ## Task 5 — Demo data (hours 11–13)
 
+- Include some deliberately off-topic / duplicate comments in the demo set so the filter has something to show (label them honestly as test examples if you write them yourself).
 - Collect 30–50 real comments from other hackathon participants on 2–3 clauses (use our site if Dev 3's comment page is ready, otherwise a Google Form).
 - `scripts/import-comments.ts`: reads `data/comments.json` → saves via Prisma.
 - Run the group step once, read the groups, make sure titles make sense.
 - Give Dev 3 two numbers for the pitch: `readAmendment` accuracy, and (if mentor answers) how long manual comparison takes.
 
+## AI provider fallback
+
+Gemini returned 503 (overloaded) during development. `lib/ai/client.ts`:
+
+- `AI_PROVIDER=gemini` (default): try Gemini; on 429/503 after retries fall back to Claude (`@anthropic-ai/sdk`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL=claude-sonnet-5`). If no Anthropic key → throw.
+- `AI_PROVIDER=claude`: skip Gemini.
+- Claude has no JSON mode: ask for JSON only, strip ```fences,`JSON.parse`.
+- Log which provider answered.
+  Only `client.ts` changes; function names stay the same.
+
 ## Checkpoints
 
 - **CP1 (hour 4):** `readAmendment` correct on the demo bill (or fallback decided).
-- **CP2 (hour 8):** all 4 functions real, tested with scripts.
+- **CP2 (hour 8):** all 5 functions real, tested with scripts (include off-topic and abusive examples for `filterComments`).
 
 ## Done means
 

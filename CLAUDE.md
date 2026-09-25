@@ -1,33 +1,52 @@
-# Хариу — Open Parliament Hackathon project
+# Хариу — Open Parliament Hackathon (shared team file)
+
+> Товчхондоо: Иргэн ба ажилтан нэг хананы хоёр талд зогсож байна — тэр хана бол ойлгоход хэцүү хуулийн төсөл. "Хариу" нь 3 алхамтай нэг урсгал: **Ойлгох → Сонсох → Хариулах.** (1) Хуулийн өөрчлөлтийг заалт бүрээр автоматаар харьцуулж, иргэнд энгийнээр тайлбарлана. (2) Иргэдийн саналаас хамааралгүйг шүүж, үлдсэнийг бүлэглэнэ. (3) Ажилтан хариулж, иргэн санал нь тусгагдсан эсэхийг харна. Жижиг нэмэлт функц хийхгүй. Маргааш 10:00-д питч (`PITCH.md`).
+
+The final pitch script is in `PITCH.md`.
+Each dev also has a personal file: `DEV1-BACKEND.md`, `DEV2-AI.md` (AI + demo data), `DEV3-FRONTEND.md` (frontend + pitch).
+When starting Claude Code, say: "Read CLAUDE.md and DEV1-BACKEND.md (or DEV2-AI.md / DEV3-FRONTEND.md), then ..."
 
 ## Context
 
-- Hackathon: Open Parliament Hackathon (Mongolian Parliament Secretariat / УИХТГ, The Asia Foundation, Unread).
-- **Final presentation: tomorrow 10:00.** Time is short. Quality over quantity.
-- Team of 3 devs. **I am Dev 2: AI functions + demo data.**
-- Mentors (parliament staff) told us: most teams focus on citizens; we win by reducing staff's manual paper work (93.9% of the legislative process is paper-based).
+- Open Parliament Hackathon (Mongolian Parliament Secretariat / УИХТГ, The Asia Foundation, Unread).
+- **Final presentation: tomorrow 10:00.** Quality over quantity.
+- Mentors (parliament staff): most teams focus on citizens; we win by reducing staff's manual paper work (93.9% of the legislative process is paper-based).
 
-## Strategy: only 2 core features, make them shine
+## Cohesion — one story
 
-Do NOT add small extra features. Polish these two.
+Citizens and staff stand on two sides of the same wall: a bill that is hard to understand.
+Once the machine understands a bill's changes, both sides benefit. **"Нэг ажил, хоёр ашиг."**
+
+| Step                       | Staff                                              | Citizen                                          |
+| -------------------------- | -------------------------------------------------- | ------------------------------------------------ |
+| **1. Ойлгох (Understand)** | Automatic clause-by-clause comparison, Word export | Same changes explained plainly: what / why / who |
+| **2. Сонсох (Listen)**     | AI filters irrelevant comments, groups the rest    | Their comment reaches staff organised            |
+| **3. Хариулах (Respond)**  | One reply per group, mark "Тусгасан / Тусгаагүй"   | "✅ Таны санал тусгагдлаа"                       |
+
+Problems from mentors (3 MPs + drafting consultant):
+
+- Young people don't know the parliament or even basic laws (e.g. tax law) — and don't know that they don't know. → Step 1 (plain explanation). No new feature.
+- Public comments contain many irrelevant / unnecessary words and ideas; staff delete them **by hand**. → Step 2 (filter).
+- A consultant handles 8–10 bills and compares every word by hand. → Step 1.
+- Citizens never learn if their comment was reflected. → Step 3.
+
+## The 2 core features (nothing else)
 
 ### Feature 1 — Law amendment comparison (Хуулийн өөрчлөлтийн харьцуулалт)
 
-**Problem:** A drafting consultant handles 8–10 bills at once. For every amendment bill they compare each clause with the current law **by hand**, even single-word changes (e.g. 3.1 "хариуцлагатай **байна**" → "хариуцлагатай **байж болно**"), then produce a consolidated version (шигтгэл) and a comparison table for MPs.
-**Solution:** Staff uploads current law + amendment bill → system produces clause-by-clause comparison with every changed word highlighted → staff approves → exports Word comparison table.
-**Same data, two views:**
-
-- Staff: precise comparison, source quote per change, "Approve", Word export.
-- Citizen: same comparison + plain explanation (what / why / who is affected).
+**Problem:** A drafting consultant handles 8–10 bills at once. For every amendment bill they compare each clause with the current law **by hand**, even single-word changes (3.1 "хариуцлагатай **байна**" → "хариуцлагатай **байж болно**"), then prepare a comparison table for MPs.
+**Solution:** Staff enters current law + amendment bill → system shows clause-by-clause comparison with every changed word highlighted → staff approves → exports a Word comparison table.
+**Same data, two views:** staff (precise, source quotes, approve, Word) and citizen (same comparison + plain what / why / who explanation).
 
 ### Feature 2 — "Was my comment reflected?" (Миний санал тусгагдсан уу?)
 
-**Problem:** Citizens comment on bills but never get a reply or learn if their comment changed anything.
-**Solution:** Citizen comments on a clause → AI groups similar comments → staff replies per group and marks "Тусгасан / Тусгаагүй" (reflected / not) → citizen sees the result next to the clause's before/after.
+**Problem:** Citizens comment on bills but never get a reply or learn if anything changed.
+**Solution:** Citizen comments on a clause → AI **filters** irrelevant comments (never deletes — staff can restore) → AI groups the relevant ones → staff replies per group and marks "Тусгасан / Тусгаагүй" → citizen sees the result next to the clause's before/after.
+**Extra problem solved:** staff currently delete off-topic / abusive / duplicate comments by hand.
 
-### Out of scope (do not build)
+### Out of scope (do NOT build)
 
-Report checker, numbering check, spelling check, ParliamentAPI, notifications, dashboards, chatbots, auto-fetch from legalinfo.mn (demo law text is loaded manually).
+Report checker, numbering check, spelling check, ParliamentAPI, notifications, dashboards with charts, chatbots, auto-fetch from legalinfo.mn (demo law text is loaded manually).
 
 ## Pipeline
 
@@ -39,108 +58,152 @@ Feature 1:
                                                                ├──→ explainChange ──→ citizen screen
                                                                └──→ makeWordFile ──→ Word for MPs
 Feature 2:
-  Citizen comments ──→ groupComments ──→ writeReply ──→ staff approves ──→ citizen sees result
+  Citizen comments ──→ filterComments ──→ groupComments ──→ writeReply ──→ staff approves ──→ citizen sees result
+                           └──→ "Шүүгдсэн" list (staff can restore)
 ```
 
-## Function contracts (names are fixed — do not rename)
+All AI runs when the bill is created or when staff clicks a button, and is saved to the DB. **Never call AI on page load.**
 
-| Function                                      | Type   | Owner          | Meaning                                                    |
-| --------------------------------------------- | ------ | -------------- | ---------------------------------------------------------- |
-| `splitIntoClauses(text)`                      | code   | Dev 1          | Split law text into clauses `[{ number, text }]`           |
-| `readAmendment(billText)`                     | **AI** | **Dev 2 (me)** | Understand amendment instructions → structured change list |
-| `applyChanges(oldClauses, changes)`           | code   | Dev 1          | Apply the change list to the old clauses → new clauses     |
-| `compareWords(oldText, newText)`              | code   | Dev 1          | Word-level diff (use the `diff` npm package)               |
-| `explainChange(oldText, newText, reasonText)` | **AI** | **Dev 2 (me)** | Plain explanation: what / why / who                        |
-| `makeWordFile(bill)`                          | code   | Dev 1          | Word comparison table                                      |
-| `groupComments(clauseText, comments)`         | **AI** | **Dev 2 (me)** | Group similar comments                                     |
-| `writeReply(clauseText, group)`               | **AI** | **Dev 2 (me)** | Draft a staff reply for a group                            |
+## Function names (fixed — do not rename)
 
-### My AI function signatures
+| Function           | Type | Owner | Plain meaning                                                                    |
+| ------------------ | ---- | ----- | -------------------------------------------------------------------------------- |
+| `splitIntoClauses` | code | Dev 1 | Хуваах — split law text into clauses                                             |
+| `readAmendment`    | AI   | Dev 2 | Ойлгох — turn amendment instructions into a change list                          |
+| `applyChanges`     | code | Dev 1 | Засах — apply the change list to the old clauses                                 |
+| `compareWords`     | code | Dev 1 | Харьцуулах — word-level diff                                                     |
+| `explainChange`    | AI   | Dev 2 | Тайлбарлах — what / why / who in plain Mongolian                                 |
+| `makeWordFile`     | code | Dev 1 | Хэвлэх — Word comparison table                                                   |
+| `filterComments`   | AI   | Dev 2 | Шүүх — label comments RELEVANT / OFF_TOPIC / ABUSIVE / DUPLICATE (never deletes) |
+| `groupComments`    | AI   | Dev 2 | Бүлэглэх — group similar comments (only RELEVANT)                                |
+| `writeReply`       | AI   | Dev 2 | Хариулах — draft staff reply for a group                                         |
+
+## Shared types (backend ↔ frontend contract)
 
 ```ts
-// lib/ai/amendment.ts
-type Change = {
-  action: "ADD" | "REMOVE" | "REPLACE_WORDS" | "REWRITE"; // нэмэх / хүчингүй болгох / үг солих / өөрчлөн найруулах
-  clause: string;        // e.g. "3.1"
-  oldWords?: string;     // REPLACE_WORDS: text being replaced
-  newText?: string;      // new words (REPLACE_WORDS) or full new clause text (ADD / REWRITE)
-  sourceQuote: string;   // exact sentence from the bill — MUST appear verbatim in billText
+type Stage =
+  | "DISCUSS_DECISION"
+  | "FIRST_READING"
+  | "FINAL_READING"
+  | "FINAL_APPROVAL";
+// Хэлэлцэх эсэх | Анхны хэлэлцүүлэг | Эцсийн хэлэлцүүлэг | Эцэслэн батлах
+
+type ChangeType = "ADDED" | "REMOVED" | "CHANGED" | "UNCHANGED";
+type Reflection = "PENDING" | "REFLECTED" | "NOT_REFLECTED"; // Хүлээгдэж буй | Тусгасан | Тусгаагүй
+
+type WordPart = { value: string; added?: boolean; removed?: boolean }; // from the `diff` package
+type FilterStatus = "RELEVANT" | "OFF_TOPIC" | "ABUSIVE" | "DUPLICATE";
+// Хамааралтай | Сэдвээс гадуур | Утгагүй/доромжилсон | Давхардсан
+
+type FilteredCommentView = {
+  id: string;
+  text: string;
+  filterStatus: FilterStatus;
+  filterReason: string;
 };
-readAmendment(billText: string): Promise<Change[]>
 
-// lib/ai/explain.ts
-explainChange(oldText: string, newText: string, reasonText: string):
-  Promise<{ what: string; why: string; who: string }>
+type BillSummary = {
+  id: string;
+  title: string;
+  stage: Stage;
+  changedCount: number;
+  unapprovedCount: number;
+  commentCount: number;
+  unansweredGroupCount: number;
+  filteredCount: number;
+};
 
-// lib/ai/comments.ts
-groupComments(clauseText: string, comments: { id: string; text: string }[]):
-  Promise<{ title: string; summary: string; commentIds: string[] }[]>
+type GroupView = {
+  id: string;
+  title: string;
+  summary: string;
+  commentCount: number;
+  replyDraft: string | null;
+  replyText: string | null;
+  reflection: Reflection;
+};
 
-// lib/ai/reply.ts
-writeReply(clauseText: string, group: { title: string; summary: string; examples: string[] }):
-  Promise<string>
+type ClauseView = {
+  id: string;
+  number: string;
+  oldText: string | null;
+  newText: string | null;
+  changeType: ChangeType;
+  diff: WordPart[];
+  sourceQuote: string | null; // exact sentence from the bill
+  what: string | null;
+  why: string | null;
+  who: string | null;
+  approved: boolean;
+  groups: GroupView[];
+  filtered: FilteredCommentView[]; // staff only; empty for citizens
+};
+
+type BillDetail = {
+  id: string;
+  title: string;
+  stage: Stage;
+  reasonText: string | null;
+  clauses: ClauseView[];
+};
 ```
 
-### Mongolian amendment phrasings `readAmendment` must recognize
+## API (Dev 1 builds, Dev 3 uses)
 
-- "...гэснийг ...гэж өөрчилсүгэй" → REPLACE_WORDS
-- "...дугаар зүйлийн ... дахь хэсгийг доор дурдсанаар өөрчлөн найруулсугай" → REWRITE
-- "...дараах агуулгатай ... дахь хэсэг нэмсүгэй" → ADD
-- "...хүчингүй болсонд тооцсугай" → REMOVE
+| Route                             | Who     | Does                                                                                                             |
+| --------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------- |
+| `GET /api/bills`                  | all     | `BillSummary[]`                                                                                                  |
+| `GET /api/bills/[id]`             | all     | `BillDetail`                                                                                                     |
+| `POST /api/bills`                 | staff   | `{ title, stage, currentLawText, amendmentText, reasonText }` → runs Feature 1 pipeline, returns `{ id }`        |
+| `POST /api/clauses/[id]/approve`  | staff   | marks clause approved                                                                                            |
+| `GET /api/bills/[id]/word`        | staff   | downloads .docx                                                                                                  |
+| `POST /api/comments`              | citizen | `{ clauseId, text }`                                                                                             |
+| `GET /api/me/comments`            | citizen | my comments + group + reply + reflection + clause before/after                                                   |
+| `POST /api/bills/[id]/group`      | staff   | runs `filterComments` → `groupComments` (RELEVANT only) → `writeReply` drafts, for all clauses with new comments |
+| `POST /api/comments/[id]/restore` | staff   | sets a filtered comment back to RELEVANT (it joins the next grouping)                                            |
+| `POST /api/groups/[id]/reply`     | staff   | `{ replyText, reflection }`                                                                                      |
 
-## AI rules (always follow)
-
-1. **Only `lib/ai/client.ts` talks to Gemini.** Every AI function calls `askGeminiJSON(prompt)`.
-2. Model name comes from `.env` `GEMINI_MODEL` (currently `gemini-3.8-flash`). Never hardcode it.
-3. Every AI function has a **stub mode**: if `process.env.AI_STUB === "true"`, return fake data without calling Gemini.
-4. **No fabrication:**
-   - `sourceQuote` must appear verbatim in the input text (`billText.includes(sourceQuote)`); drop items that fail.
-   - `explainChange.why` comes ONLY from `reasonText` (the bill's explanatory note). If not there, return "Шалтгааныг төсөлд дурдаагүй."
-   - `writeReply` must not promise outcomes.
-5. All AI output text is in **Mongolian**, plain language (high-school level), neutral, no political opinions.
-6. Validate AI output shape in code; if wrong, treat as empty rather than crash.
-7. AI results are computed once and saved to the DB — never call AI on page load.
-
-## Code style (important)
-
-- **Keep code simple and beginner-friendly.** I want to understand every line.
-- No clever abstractions, no generics gymnastics, no extra libraries unless necessary.
-- Short functions, clear names, comments in Mongolian explaining each step.
-- Prefer plain `for` loops and `if` statements over complex chains.
+Errors: `{ error: "монгол текст" }` with proper HTTP status.
 
 ## Stack
 
-- Next.js (App Router, TypeScript), Tailwind
-- Prisma 7 (`generator client { provider = "prisma-client"; output = "../app/generated/prisma" }`), PostgreSQL
-- Clerk auth (roles: CITIZEN / STAFF; staff decided by `STAFF_EMAILS` env)
-- Gemini via `@google/genai`
-- Existing schema naming: `Submission` = Comment, `Cluster` = Group.
+Next.js (App Router, TS), Tailwind, Prisma 7 (`provider = "prisma-client"`, output `app/generated/prisma`), PostgreSQL, Clerk (CITIZEN / STAFF via `STAFF_EMAILS`), Gemini via `@google/genai` (model from `GEMINI_MODEL`, currently `gemini-3.8-flash`), `diff`, `docx`.
+
+## Code style (everyone)
+
+- **Simple, readable, beginner-friendly.** Every teammate must understand every line.
+- Short functions, clear names, comments in Mongolian for each step.
+- No clever abstractions, no unnecessary libraries.
+- All UI text in Mongolian.
 
 ## File ownership
 
-- **Mine (Dev 2):** `lib/ai/*`, `scripts/*`, demo data.
-- Dev 1: `prisma/`, `lib/*.ts` (non-AI), `app/api/*`.
-- Dev 3: `app/**/page.tsx`, `components/*`, pitch.
-- Do not edit other devs' files unless I explicitly ask.
+- Dev 1: `prisma/`, `lib/*.ts` (non-AI), `app/api/**`, `scripts/seed.ts`
+- Dev 2: `lib/ai/**`, `scripts/test-*.ts`, `scripts/import-comments.ts`, `data/`
+- Dev 3: `app/**/page.tsx`, `app/**/layout.tsx` (except staff guard), `components/**`, `pitch/`
+  Do not edit other people's files without telling them.
 
-## Current status
+## Timeline (hours from start)
 
-- `lib/ai/client.ts` — done (`askGeminiJSON`, retries only on 429/503).
-- `lib/ai/review.ts` — from the dropped report-checker idea; can be deleted.
-- Next: stubs for all 4 functions → real `readAmendment` (highest priority) → `explainChange` → `groupComments` → `writeReply`.
+| Hour  | Checkpoint                                                             |
+| ----- | ---------------------------------------------------------------------- |
+| 0–0.5 | Together: pick demo law, agree on this file                            |
+| 4     | ✅ **CP1:** entering the bill shows a correct highlighted comparison   |
+| 8     | ✅ **CP2:** comment → filter → group → reply → citizen sees "Тусгасан" |
+| 8–11  | Sleep in shifts (3h each)                                              |
+| 13    | ✅ **Feature freeze.** Only bug fixes, rehearsal                       |
 
-## Testing
+**Fallback at CP1:** if `readAmendment` + `applyChanges` are unreliable, switch to: AI returns old/new text per clause directly, `compareWords` only highlights.
 
-- Test scripts in `scripts/test-*.ts`, run with: `npx tsx --env-file=.env scripts/test-xxx.ts`
-- `readAmendment` must be checked by hand on every clause of the real demo bill. Record accuracy (e.g. "19/20 correct") for the pitch — use real measured numbers only.
+## Demo safety
 
-## Demo data (my job)
-
-- One real law: current text (legalinfo.mn) + its amendment bill (lawforum.parliament.mn) + the bill's explanatory note. Prefer a bill with a tiny word change like "байна → байж болно".
-- 30–50 real citizen comments written by other hackathon participants.
+- AI providers can be overloaded (Gemini returned 503s during development). **All AI results are precomputed with `scripts/seed.ts` and saved to the DB before the demo.** The demo never waits on a live AI call.
+- `lib/ai/client.ts` has a fallback: Gemini → Claude on 429/503 (see DEV2-AI.md).
+- Keep a screen recording of the full demo as backup.
 
 ## Quality bar
 
-- Every changed word highlighted correctly on the real bill.
-- AI results precomputed; no waiting during the demo.
-- No placeholder text, everything in Mongolian, no dead
+- Real law, real bill, real comments. No fake-looking data.
+- Every changed word highlighted correctly.
+- No placeholder text, no dead buttons, everything Mongolian.
+- Citizen pages look good on a phone.
