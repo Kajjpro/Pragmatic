@@ -1,6 +1,6 @@
 // Иргэнд харагдах хуулийн мэдээлэл (зөвхөн уншина). Хуудсууд DB-ээс л уншина — AI дуудахгүй.
-// Шат (stage) зөвхөн бодит өгөгдлөөс ирсэн үед л харуулна: LawForum-ын төсөлд seed анхдагч
-// "Хэлэлцэх эсэх" тавьдаг тул тэрийг баримт мэт харуулахгүй.
+// Шат (stage) зөвхөн бодит өгөгдлөөс (демо төслийн data/stage.txt) ирсэн үед л харуулна:
+// LawForum-ын "stage" дугаарын утга баталгаагүй тул манай 4 шат руу хөрвүүлж харуулахгүй.
 import { prisma } from "@/lib/prisma";
 import { toVoteEvent } from "@/lib/feed";
 import type { Persona, VoteEvent } from "@/lib/types";
@@ -19,6 +19,12 @@ export type PublicBill = {
   personas: Persona[];
   sourceUrl: string | null;
   updatedAt: string;
+  publishedAt: string | null; // LawForum-д нийтэлсэн огноо
+  projectNumber: string | null;
+  summary: string | null; // LawForum-ын танилцуулгын эхний хэсэг
+  lawforumComments: number | null; // LawForum дээрх иргэдийн сэтгэгдлийн тоо
+  lawforumViews: number | null;
+  hasCard: boolean;
 };
 
 export type PublicBillDetail = PublicBill & {
@@ -39,6 +45,10 @@ const billSelect = {
   lawforumStage: true,
   slugUrl: true,
   updatedAt: true,
+  publishedAt: true,
+  projectNumber: true,
+  description: true,
+  lawforumStats: true,
   cards: { select: { personas: true, kind: true, youMeaning: true } },
   clauses: {
     where: { changeType: { not: "UNCHANGED" as const }, approved: true },
@@ -56,9 +66,36 @@ type BillRow = {
   lawforumStage: number | null;
   slugUrl: string | null;
   updatedAt: Date;
+  publishedAt: Date | null;
+  projectNumber: string | null;
+  description: string | null;
+  lawforumStats: unknown;
   cards: { personas: Persona[]; kind: "BILL" | "CHANGE"; youMeaning: string }[];
   clauses: { id: string; _count: { comments: number } }[];
 };
+
+const SUMMARY_LENGTH = 220;
+
+// LawForum-ын статистикаас тоо уншина (хэлбэр өөр бол null)
+function statNumber(stats: unknown, key: "comments" | "hits"): number | null {
+  const value = (stats as Record<string, unknown> | null)?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function firstPart(text: string | null, title: string): string | null {
+  if (!text) return null;
+  let clean = text.replace(/\s+/g, " ").trim();
+  // LawForum-ын танилцуулга ихэвчлэн төслийн нэрийг давтаж эхэлдэг ("… ТУХАЙ ХУУЛИЙН ТӨСЛИЙН ТАНИЛЦУУЛГА") — давхардлыг хасна
+  const head = title.replace(/\s+/g, " ").trim().toLowerCase();
+  if (head && clean.toLowerCase().startsWith(head)) {
+    clean = clean
+      .slice(head.length)
+      .replace(/^\s*(хуулийн төслийн танилцуулга|төслийн танилцуулга|танилцуулга)?\s*/i, "")
+      .trim();
+  }
+  if (!clean) return null;
+  return clean.length > SUMMARY_LENGTH ? `${clean.slice(0, SUMMARY_LENGTH).trimEnd()}…` : clean;
+}
 
 function toPublicBill(b: BillRow): PublicBill {
   const personas = Array.from(new Set(b.cards.flatMap((c) => c.personas)));
@@ -67,26 +104,29 @@ function toPublicBill(b: BillRow): PublicBill {
     title: b.title,
     typeTitle: b.typeTitle,
     categoryTitle: b.categoryTitle,
-    stage: b.source === "UPLOAD" || b.lawforumStage !== null ? b.stage : null,
+    stage: b.source === "UPLOAD" ? b.stage : null,
     changedCount: b.clauses.length,
     commentCount: b.clauses.reduce((sum, c) => sum + c._count.comments, 0),
     personas,
     sourceUrl: b.slugUrl,
     updatedAt: b.updatedAt.toISOString(),
+    publishedAt: b.publishedAt ? b.publishedAt.toISOString() : null,
+    projectNumber: b.projectNumber,
+    summary: firstPart(b.description, b.title),
+    lawforumComments: statNumber(b.lawforumStats, "comments"),
+    lawforumViews: statNumber(b.lawforumStats, "hits"),
+    hasCard: b.cards.length > 0,
   };
 }
 
-// Иргэнд харагдах төслүүд: карттай эсвэл батлагдсан харьцуулалттай
+// Иргэнд харагдах бүх төсөл: LawForum-оос татсан бүгд + seed-ийн төслүүд.
+// Эрэмбэ: заалтын харьцуулалттай → карттай → LawForum-д шинээр нийтэлсэн нь эхэнд.
 export async function getPublicBills(): Promise<PublicBill[]> {
-  const rows = await prisma.project.findMany({
-    where: {
-      OR: [{ cards: { some: {} } }, { clauses: { some: { approved: true, changeType: { not: "UNCHANGED" } } } }],
-    },
-    orderBy: { updatedAt: "desc" },
-    select: billSelect,
-  });
-  // Харьцуулалттай төслүүд эхэнд
-  return rows.map(toPublicBill).sort((a, b) => b.changedCount - a.changedCount);
+  const rows = await prisma.project.findMany({ select: billSelect });
+  const time = (b: PublicBill) => new Date(b.publishedAt ?? b.updatedAt).getTime();
+  return rows
+    .map(toPublicBill)
+    .sort((a, b) => b.changedCount - a.changedCount || Number(b.hasCard) - Number(a.hasCard) || time(b) - time(a));
 }
 
 export async function getPublicBill(id: string): Promise<PublicBillDetail | null> {
@@ -94,7 +134,6 @@ export async function getPublicBill(id: string): Promise<PublicBillDetail | null
     where: { id },
     select: {
       ...billSelect,
-      description: true,
       reasonText: true,
       voteEvents: {
         orderBy: { createdAt: "desc" },
@@ -119,8 +158,6 @@ export async function getPublicBill(id: string): Promise<PublicBillDetail | null
   });
   if (!row) return null;
   const base = toPublicBill(row);
-  // Карт ч, харьцуулалт ч байхгүй төслийг иргэнд харуулахгүй
-  if (row.cards.length === 0 && base.changedCount === 0) return null;
 
   return {
     ...base,
