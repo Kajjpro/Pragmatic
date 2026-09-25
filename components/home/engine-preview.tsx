@@ -35,10 +35,10 @@ export function EnginePreview() {
 
       <div className="p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-md bg-parliament-700 px-2 py-0.5 font-mono text-[12px] font-bold text-white">
+          <span className="rounded-md bg-brand-700 px-2 py-0.5 font-mono text-[12px] font-bold text-white">
             35.1
           </span>
-          <span className="rounded-full bg-gold-100 px-2.5 py-0.5 text-[11.5px] font-bold uppercase tracking-wide text-gold-700 ring-1 ring-inset ring-gold-300">
+          <span className="rounded-full bg-point-100 px-2.5 py-0.5 text-[11.5px] font-bold uppercase tracking-wide text-point-700 ring-1 ring-inset ring-point-300">
             Өөрчилсөн
           </span>
         </div>

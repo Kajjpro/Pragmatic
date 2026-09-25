@@ -14,12 +14,12 @@ export default async function StaffLayout({ children }: LayoutProps<"/staff">) {
   if (user.role !== "STAFF") {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-6 py-20 text-center">
-        <p className="text-[17px] font-bold text-parliament-900">
+        <p className="text-[17px] font-bold text-ink-950">
           Энэ хэсэг зөвхөн УИХТГ-ын ажилтанд нээлттэй.
         </p>
         <Link
           href="/"
-          className="press inline-flex min-h-12 items-center rounded-full bg-gold-400 px-5 text-[15px] font-bold text-parliament-950 shadow-sm hover:bg-gold-300"
+          className="press inline-flex min-h-12 items-center rounded-full bg-point-400 px-5 text-[15px] font-bold text-ink-950 shadow-sm hover:bg-point-300"
         >
           Нүүр хуудас руу буцах
         </Link>
@@ -33,12 +33,12 @@ export default async function StaffLayout({ children }: LayoutProps<"/staff">) {
   });
 
   return (
-    <div className="flex min-h-full flex-col bg-parliament-50/30">
-      <div className="chrome-navy relative text-white">
+    <div className="flex min-h-full flex-col bg-brand-50/30">
+      <div className="chrome-brand relative text-white">
         <div className="grain" aria-hidden />
         <div className="relative mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-5 sm:px-6">
           <div>
-            <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-gold-400">
+            <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-point-400">
               Ажилтны булан
             </div>
             <h1 className="mt-0.5 text-[20px] font-bold text-white sm:text-[22px]">

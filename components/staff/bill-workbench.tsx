@@ -9,8 +9,11 @@ import { StageBar } from "@/components/law/stage-bar";
 import { ClauseCompare } from "@/components/law/clause-compare";
 import { ChangeBadge } from "@/components/law/change-badge";
 import { GroupCard } from "@/components/feedback/group-card";
+import { FilteredList } from "@/components/staff/filtered-list";
 import { Kbd } from "@/components/ui/kbd";
 
+// Ажилтны ажлын ширээ. Компьютер/проекторт зориулсан — үсэг том,
+// 5 метрээс уншигдахаар. Логик хэвээр, зөвхөн харагдац шинэчлэгдсэн.
 type Tab = "compare" | "citizen";
 type Filter = "ALL" | ChangeType;
 
@@ -25,32 +28,33 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("compare");
   const [filter, setFilter] = useState<Filter>("ALL");
-  const [approved, setApproved] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(bill.clauses.map((c) => [c.id, c.approved])),
+  const [approved, setApproved] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(bill.clauses.map((c) => [c.id, c.approved])),
   );
   const [active, setActive] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [grouping, setGrouping] = useState(false);
 
-  const filtered = useMemo(() => {
-    return bill.clauses.filter((c) => {
-      if (c.changeType === "UNCHANGED") return false;
-      if (filter === "ALL") return true;
-      return c.changeType === filter;
-    });
-  }, [bill.clauses, filter]);
+  const filtered = useMemo(
+    () =>
+      bill.clauses.filter((c) => {
+        if (c.changeType === "UNCHANGED") return false;
+        if (filter === "ALL") return true;
+        return c.changeType === filter;
+      }),
+    [bill.clauses, filter],
+  );
 
   const flash = useCallback((msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 1500);
+    setTimeout(() => setToast(null), 3200);
   }, []);
 
-  // Батлах товч — DB-д хадгална. Иргэн зөвхөн батлагдсан заалтыг хардаг тул
-  // энэ нь заавал сервер рүү очих ёстой.
+  // Батлах — DB-д хадгална. Иргэн зөвхөн батлагдсан заалтыг хардаг.
   const toggleApprove = useCallback(
     async (id: string) => {
       const next = !approved[id];
-      setApproved((s) => ({ ...s, [id]: next })); // шууд харагдана
+      setApproved((s) => ({ ...s, [id]: next }));
       try {
         const res = await fetch(`/api/clauses/${id}/approve`, {
           method: "POST",
@@ -59,7 +63,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
         });
         if (!res.ok) {
           const data = await res.json().catch(() => null);
-          setApproved((s) => ({ ...s, [id]: !next })); // алдаа гарвал буцаана
+          setApproved((s) => ({ ...s, [id]: !next }));
           flash(data?.error ?? "Хадгалахад алдаа гарлаа");
           return;
         }
@@ -72,7 +76,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
     [approved, flash],
   );
 
-  // AI-аар шүүж, бүлэглэж, ноорог хариу бичүүлнэ. Дараа нь хуудсыг шинэчилнэ.
+  // AI-аар шүүж, бүлэглэж, ноорог хариу бичүүлнэ.
   const runGrouping = useCallback(async () => {
     setGrouping(true);
     try {
@@ -82,7 +86,7 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
         flash(data?.error ?? "Бүлэглэхэд алдаа гарлаа");
         return;
       }
-      flash("✓ Санал бүлэглэгдлээ");
+      flash("✓ Санал шүүгдэж, бүлэглэгдлээ");
       router.refresh();
     } catch {
       flash("Сүлжээний алдаа. Дахин оролдоно уу.");
@@ -111,126 +115,125 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
     return () => window.removeEventListener("keydown", h);
   }, [filtered, active, tab, toggleApprove]);
 
-  const changedCount = bill.clauses.filter(
-    (c) => c.changeType !== "UNCHANGED",
-  ).length;
-  const unapprovedCount = bill.clauses.filter(
-    (c) => c.changeType !== "UNCHANGED" && !approved[c.id],
-  ).length;
+  const changed = bill.clauses.filter((c) => c.changeType !== "UNCHANGED");
+  const changedCount = changed.length;
+  const unapprovedCount = changed.filter((c) => !approved[c.id]).length;
+
+  // Юүлүүр: хэдэн санал ирсэн → хэд нь шүүгдсэн → хэдэн бүлэг болсон
+  const groupedCount = bill.clauses.reduce(
+    (a, c) => a + c.groups.reduce((b, g) => b + g.commentCount, 0),
+    0,
+  );
+  const filteredCount = bill.clauses.reduce((a, c) => a + c.filtered.length, 0);
+  const groupCount = bill.clauses.reduce((a, c) => a + c.groups.length, 0);
+  const totalComments = groupedCount + filteredCount;
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Header */}
-      <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_20px_45px_-30px_rgba(15,42,99,0.3)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <div className="text-[12px] font-bold uppercase tracking-[0.12em] text-parliament-600">
+    <div className="flex flex-col gap-7">
+      {/* Толгой */}
+      <section className="rounded-3xl border border-ink-200 bg-white p-6 shadow-card">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="max-w-4xl">
+            <div className="text-[14px] font-extrabold uppercase tracking-[0.12em] text-brand-700">
               Ажлын ширээ
             </div>
-            <h1 className="mt-1 font-editorial text-2xl font-medium text-parliament-900">
+            <h1 className="mt-1.5 text-[30px] font-extrabold leading-tight tracking-tight text-ink-950 xl:text-[36px]">
               {bill.title}
             </h1>
             {bill.reasonText ? (
-              <p className="mt-2 text-[14px] leading-relaxed text-ink-700">
+              <p className="mt-3 text-[17px] leading-relaxed text-ink-700">
                 {bill.reasonText}
               </p>
             ) : null}
           </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={`/api/bills/${bill.id}/word`}
-              className="press inline-flex min-h-11 items-center gap-2 rounded-full bg-parliament-700 px-4 text-[13px] font-semibold text-white shadow-sm hover:bg-parliament-800"
-            >
-              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                <path
-                  d="M10 3v10m0 0-4-4m4 4 4-4M4 17h12"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Word татах
-            </a>
-          </div>
+
+          <a
+            href={`/api/bills/${bill.id}/word`}
+            className="press inline-flex min-h-14 items-center gap-2 rounded-2xl bg-brand-600 px-6 text-[17px] font-extrabold text-white shadow-brand hover:bg-brand-700"
+          >
+            <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5" aria-hidden>
+              <path
+                d="M10 3v10m0 0-4-4m4 4 4-4M4 17h12"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Word татах
+          </a>
         </div>
 
-        <div className="mt-5">
+        <div className="mt-6">
           <StageBar current={bill.stage} />
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-ink-100 pt-4">
+        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-ink-100 pt-5">
           <Metric label="Өөрчлөгдсөн заалт" value={changedCount} />
           <Metric
             label="Батлагдаагүй"
             value={unapprovedCount}
             tone={unapprovedCount ? "warn" : "good"}
           />
-          <Metric
-            label="Иргэдийн санал"
-            value={bill.clauses.reduce(
-              (a, c) => a + c.groups.reduce((b, g) => b + g.commentCount, 0),
-              0,
-            )}
-          />
+          <Metric label="Залуучуудын санал" value={totalComments} />
         </div>
       </section>
 
-      {/* Tabs */}
-      <div className="flex items-end justify-between border-b border-ink-100">
+      {/* Табууд */}
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-ink-200">
         <div className="flex items-end gap-1">
           {(["compare", "citizen"] as const).map((t) => (
             <button
               key={t}
+              type="button"
               onClick={() => setTab(t)}
+              aria-current={tab === t ? "page" : undefined}
               className={cn(
-                "press relative -mb-px min-h-11 px-4 text-[14px] font-semibold",
-                tab === t
-                  ? "text-parliament-900"
-                  : "text-ink-600 hover:text-parliament-700",
+                "press relative -mb-0.5 min-h-14 px-5 text-[19px] font-extrabold",
+                tab === t ? "text-brand-700" : "text-ink-600 hover:text-ink-900",
               )}
             >
-              {t === "compare" ? "Харьцуулалт" : "Иргэдийн санал"}
+              {t === "compare" ? "Харьцуулалт" : "Залуучуудын санал"}
               {tab === t ? (
-                <span className="absolute inset-x-3 -bottom-px h-[3px] rounded-full bg-gold-400" />
+                <span className="absolute inset-x-3 -bottom-0.5 h-1 rounded-full bg-brand-600" />
               ) : null}
             </button>
           ))}
         </div>
         {tab === "compare" ? (
-          <div className="hidden items-center gap-2 text-[10.5px] text-ink-500 md:flex">
-            <Kbd>↑</Kbd><Kbd>↓</Kbd> мөр · <Kbd>A</Kbd> батлах
+          <div className="hidden items-center gap-2 pb-3 text-[14px] text-ink-600 md:flex">
+            <Kbd>↑</Kbd>
+            <Kbd>↓</Kbd> мөр · <Kbd>A</Kbd> батлах
           </div>
         ) : null}
       </div>
 
       {tab === "compare" ? (
         <>
-          {/* Filter chips */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             {filters.map((f) => {
               const count =
                 f.key === "ALL"
                   ? changedCount
-                  : bill.clauses.filter((c) => c.changeType === f.key).length;
+                  : changed.filter((c) => c.changeType === f.key).length;
               return (
                 <button
                   key={f.key}
+                  type="button"
                   onClick={() => setFilter(f.key)}
+                  aria-pressed={filter === f.key}
                   className={cn(
-                    "press inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold",
+                    "press inline-flex min-h-12 items-center gap-2 rounded-2xl border-2 px-5 text-[16px] font-extrabold",
                     filter === f.key
-                      ? "border-gold-400 bg-gold-400 text-parliament-950 shadow-sm"
-                      : "border-ink-200 bg-white text-ink-700 hover:border-parliament-400 hover:text-parliament-700",
+                      ? "border-brand-600 bg-brand-600 text-white shadow-brand"
+                      : "border-ink-200 bg-white text-ink-700 hover:border-brand-400 hover:text-brand-700",
                   )}
                 >
                   {f.label}
                   <span
                     className={cn(
-                      "rounded-full px-1.5 text-[11px] font-bold tabular-nums",
-                      filter === f.key
-                        ? "bg-parliament-950/15 text-parliament-950"
-                        : "bg-ink-100 text-ink-600",
+                      "rounded-full px-2 text-[14px] font-extrabold tabular-nums",
+                      filter === f.key ? "bg-white/20 text-white" : "bg-ink-100 text-ink-700",
                     )}
                   >
                     {count}
@@ -240,13 +243,12 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
             })}
           </div>
 
-          {/* Clause cards */}
           {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-ink-200 bg-white p-10 text-center text-[14px] text-ink-600">
+            <div className="rounded-3xl border-2 border-dashed border-ink-200 bg-white p-12 text-center text-[17px] text-ink-600">
               Тохирох заалт алга. Шүүлтүүрээ өөрчилнө үү.
             </div>
           ) : (
-            <ol className="flex flex-col gap-4">
+            <ol className="flex flex-col gap-5">
               {filtered.map((c, i) => {
                 const isActive = i === active;
                 const isApproved = approved[c.id];
@@ -255,59 +257,54 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
                     key={c.id}
                     onClick={() => setActive(i)}
                     className={cn(
-                      "card-lift cursor-pointer rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,42,99,0.3)]",
+                      "cursor-pointer rounded-3xl border-2 bg-white p-6 shadow-card transition-colors",
                       isActive
-                        ? "border-gold-400 ring-2 ring-gold-200"
-                        : "border-ink-200 hover:border-parliament-300 hover:shadow-[0_24px_50px_-30px_rgba(15,42,99,0.45)]",
+                        ? "border-brand-500 ring-4 ring-brand-100"
+                        : "border-ink-200 hover:border-brand-300",
                     )}
                   >
-                    <header className="flex flex-wrap items-center gap-2">
+                    <header className="flex flex-wrap items-center gap-3">
                       <span
                         className={cn(
-                          "grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold tabular-nums",
-                          isActive
-                            ? "bg-gold-400 text-parliament-950"
-                            : "bg-ink-100 text-ink-600",
+                          "grid h-9 w-9 place-items-center rounded-xl text-[16px] font-extrabold tabular-nums",
+                          isActive ? "bg-brand-600 text-white" : "bg-ink-100 text-ink-700",
                         )}
                       >
                         {i + 1}
                       </span>
-                      <span className="rounded-md bg-parliament-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-parliament-700">
+                      <span className="rounded-lg bg-brand-50 px-3 py-1 font-mono text-[16px] font-extrabold text-brand-700">
                         {c.number}
                       </span>
                       <ChangeBadge type={c.changeType} />
                       {isApproved ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-ok-100 px-3 py-1 text-[14px] font-extrabold text-ok-800 ring-1 ring-inset ring-ok-500/40">
                           ✓ Батлагдсан
                         </span>
                       ) : null}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleApprove(c.id);
                         }}
                         className={cn(
-                          "press ml-auto min-h-11 rounded-full px-4 text-[13px] font-bold",
+                          "press ml-auto min-h-14 rounded-2xl px-7 text-[17px] font-extrabold",
                           isApproved
                             ? "bg-ink-100 text-ink-700 hover:bg-ink-200"
-                            : "bg-gold-400 text-parliament-950 shadow-sm hover:bg-gold-300",
+                            : "bg-brand-600 text-white shadow-brand hover:bg-brand-700",
                         )}
                       >
                         {isApproved ? "Цуцлах" : "Батлах"}
                       </button>
                     </header>
 
-                    <div className="mt-4">
-                      <ClauseCompare
-                        oldText={c.oldText}
-                        newText={c.newText}
-                        diff={c.diff}
-                      />
+                    <div className="mt-5">
+                      <ClauseCompare oldText={c.oldText} newText={c.newText} diff={c.diff} />
                     </div>
 
                     {c.sourceQuote ? (
-                      <div className="mt-3 rounded-lg bg-parliament-50 p-3 text-[13px] italic text-parliament-900">
-                        <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider not-italic text-parliament-600">
+                      <div className="mt-4 rounded-2xl border-l-4 border-brand-600 bg-brand-50 p-4 text-[16px] italic leading-relaxed text-ink-900">
+                        <span className="mr-2 text-[13px] font-extrabold uppercase not-italic tracking-wider text-brand-700">
                           Эх сурвалж
                         </span>
                         «{c.sourceQuote}»
@@ -320,22 +317,32 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
           )}
         </>
       ) : (
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="max-w-xl text-[14px] leading-relaxed text-ink-700">
-              Иргэдийн саналыг AI-аар агуулгаар нь бүлэглэсэн. Ноорог хариу
-              засаад «Тусгасан / Тусгаагүй» сонго.
-            </p>
+        <div className="flex flex-col gap-7">
+          {/* Юүлүүр — энэ бол "бид зүгээр нэг иргэний апп биш" гэдгийн баталгаа */}
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-ink-200 bg-white p-6 shadow-card">
+            <div className="flex flex-wrap items-center gap-3 text-[20px] font-extrabold text-ink-950 xl:text-[24px]">
+              <Funnel value={totalComments} label="санал" />
+              <span aria-hidden className="text-ink-300">
+                →
+              </span>
+              <Funnel value={filteredCount} label="шүүгдсэн" tone="bad" />
+              <span aria-hidden className="text-ink-300">
+                →
+              </span>
+              <Funnel value={groupCount} label="бүлэг" tone="brand" />
+            </div>
+
             <button
+              type="button"
               onClick={runGrouping}
               disabled={grouping}
-              className="press inline-flex min-h-11 items-center gap-2 rounded-full bg-gold-400 px-4 text-[13px] font-bold text-parliament-950 shadow-sm hover:bg-gold-300 disabled:opacity-60"
+              className="press inline-flex min-h-14 items-center gap-2 rounded-2xl bg-brand-600 px-6 text-[17px] font-extrabold text-white shadow-brand hover:bg-brand-700 disabled:opacity-60"
             >
-              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+              <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5" aria-hidden>
                 <path
                   d="M15 8A5 5 0 0 0 6 5l-2 3M5 12a5 5 0 0 0 9 3l2-3"
                   stroke="currentColor"
-                  strokeWidth="1.6"
+                  strokeWidth="1.8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -344,39 +351,101 @@ export function BillWorkbench({ bill }: { bill: BillDetail }) {
             </button>
           </div>
 
-          {bill.clauses
-            .filter((c) => c.groups.length)
-            .map((c) => (
-              <section key={c.id} className="flex flex-col gap-3">
-                <header className="flex items-center gap-2 border-b border-ink-100 pb-2">
-                  <span className="rounded-md bg-parliament-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-parliament-700">
-                    {c.number}
-                  </span>
-                  <span className="text-[13px] font-medium text-ink-700">
-                    {c.groups.length} бүлэг ·{" "}
-                    {c.groups.reduce((a, g) => a + g.commentCount, 0).toLocaleString("mn-MN")}{" "}
-                    санал
-                  </span>
-                </header>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {c.groups.map((g) => (
-                    <GroupCard key={g.id} group={g} />
-                  ))}
-                </div>
-              </section>
-            ))}
+          <p className="max-w-3xl text-[17px] leading-relaxed text-ink-700">
+            AI хамааралгүй саналыг шүүж (устгахгүй), үлдсэнийг агуулгаар нь
+            бүлэглэсэн. Ноорог хариуг засаад «Тусгасан / Тусгаагүй» сонгоход
+            иргэнд мэдэгдэл, тэмдэг очно.
+          </p>
+
+          {bill.clauses.filter((c) => c.groups.length || c.filtered.length).length === 0 ? (
+            <div className="rounded-3xl border-2 border-dashed border-ink-200 bg-white p-12 text-center text-[17px] text-ink-600">
+              Одоогоор санал ирээгүй байна. Санал ирмэгц «Санал бүлэглэх» дарна уу.
+            </div>
+          ) : (
+            bill.clauses
+              .filter((c) => c.groups.length || c.filtered.length)
+              .map((c) => (
+                <section key={c.id} className="flex flex-col gap-4">
+                  <header className="flex flex-wrap items-center gap-3 border-b-2 border-ink-100 pb-3">
+                    <span className="rounded-lg bg-brand-50 px-3 py-1 font-mono text-[16px] font-extrabold text-brand-700">
+                      {c.number}
+                    </span>
+                    <span className="text-[17px] font-bold text-ink-700">
+                      {c.groups.length} бүлэг ·{" "}
+                      {c.groups
+                        .reduce((a, g) => a + g.commentCount, 0)
+                        .toLocaleString("mn-MN")}{" "}
+                      санал
+                    </span>
+                  </header>
+
+                  {c.groups.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      {c.groups.map((g) => (
+                        <GroupCard
+                          key={g.id}
+                          group={g}
+                          onSaved={(reflection) =>
+                            flash(
+                              reflection === "REFLECTED"
+                                ? "Иргэдэд мэдэгдэл ба тэмдэг илгээгдлээ"
+                                : "Хариу хадгалагдлаа",
+                            )
+                          }
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {/* Шүүгдсэн саналууд — устгаагүй, ажилтан буцаах боломжтой */}
+                  <FilteredList
+                    clauseNumber={c.number}
+                    items={c.filtered}
+                    onRestored={flash}
+                  />
+                </section>
+              ))
+          )}
         </div>
       )}
 
+      {/* Мэдэгдэл */}
       <div
+        role="status"
+        aria-live="polite"
         className={cn(
-          "pointer-events-none fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-parliament-950 px-4 py-2 text-[12px] font-medium text-white shadow-lg transition-all duration-300",
-          toast ? "opacity-100" : "opacity-0 translate-y-2",
+          "pointer-events-none fixed bottom-8 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-ink-950 px-6 py-4 text-[17px] font-bold text-white shadow-lift transition-all duration-300",
+          toast ? "opacity-100" : "translate-y-3 opacity-0",
         )}
       >
         {toast}
       </div>
     </div>
+  );
+}
+
+// Юүлүүрийн нэг тоо
+function Funnel({
+  value,
+  label,
+  tone,
+}: {
+  value: number;
+  label: string;
+  tone?: "bad" | "brand";
+}) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <b
+        className={cn(
+          "tabular-nums",
+          tone === "bad" ? "text-bad-800" : tone === "brand" ? "text-brand-700" : "text-ink-950",
+        )}
+      >
+        {value.toLocaleString("mn-MN")}
+      </b>
+      <span className="text-[16px] font-bold text-ink-600">{label}</span>
+    </span>
   );
 }
 
@@ -390,16 +459,16 @@ function Metric({
   tone?: "neutral" | "warn" | "good";
 }) {
   const c = {
-    neutral: "bg-parliament-50 text-parliament-800",
-    warn: "bg-gold-100 text-gold-700",
-    good: "bg-emerald-100 text-emerald-800",
+    neutral: "bg-brand-50 text-brand-800",
+    warn: "bg-point-100 text-point-700",
+    good: "bg-ok-100 text-ok-800",
   }[tone];
   return (
-    <div className={cn("rounded-xl px-3 py-2 text-center", c)}>
-      <div className="text-[10.5px] font-semibold uppercase tracking-wider opacity-80">
+    <div className={cn("rounded-2xl px-5 py-3 text-center", c)}>
+      <div className="text-[13px] font-extrabold uppercase tracking-wider opacity-80">
         {label}
       </div>
-      <div className="text-lg font-bold tabular-nums">{value}</div>
+      <div className="text-[28px] font-extrabold tabular-nums">{value}</div>
     </div>
   );
 }

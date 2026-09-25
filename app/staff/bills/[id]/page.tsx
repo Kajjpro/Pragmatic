@@ -17,14 +17,14 @@ export default async function StaffBillPage({
       <nav className="flex flex-wrap items-center gap-2 text-[13px] text-ink-600">
         <Link
           href="/staff"
-          className="rounded transition-colors hover:text-parliament-700"
+          className="rounded transition-colors hover:text-brand-700"
         >
           Ажлын самбар
         </Link>
         <span aria-hidden className="text-ink-300">
           /
         </span>
-        <span className="font-medium text-parliament-900">{bill.title}</span>
+        <span className="font-medium text-ink-950">{bill.title}</span>
       </nav>
       <BillWorkbench bill={bill} />
     </div>
