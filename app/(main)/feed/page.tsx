@@ -1,100 +1,217 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { LawCard } from "@/components/feed/law-card";
-import { Quiz } from "@/components/feed/quiz";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import type { FeedCard, Persona } from "@/lib/types";
+import { fetchFeed, postCardView, postPersona } from "@/components/feed/feed-data";
+import {
+  readProgress,
+  writeProgress,
+  recordCardView,
+  recordQuizAnswer,
+  type Progress,
+} from "@/components/feed/progress-store";
+import { FeedDeck } from "@/components/feed/feed-deck";
+import { FeedSkeleton } from "@/components/feed/feed-skeleton";
+import { PersonaSheet } from "@/components/feed/persona-sheet";
+import { PersonaChip } from "@/components/feed/persona-chip";
+import { QuizSheet } from "@/components/feed/quiz-sheet";
+import { SaveProgressSheet } from "@/components/feed/save-progress-sheet";
 import { EmptyState } from "@/components/ui/empty-state";
-import { mockCards, mockQuizAnswers } from "@/lib/mock";
-import { PERSONAS, personaLabels, type Persona } from "@/lib/types";
-import { cn } from "@/lib/cn";
+import { ErrorState } from "@/components/ui/error-state";
+import { StreakFlame } from "@/components/ui/streak-flame";
 
 // ① Өнөөдрийн хууль — 60 секундийн картууд.
-// ДЕМО: одоогоор lib/mock.ts-ээс уншиж байна.
-// Dev 1-ийн GET /api/feed?persona=... бэлэн болмогц тийш шилжинэ.
-
-// "Бүгд"-ийг эхэнд нь тавина
-const filters: Persona[] = ["ALL", ...PERSONAS.filter((p) => p !== "ALL")];
-
+// Зочин бүх зүйлийг ашиглана; нэвтрэх нь зөвхөн оноо хадгалахад хэрэгтэй.
 export default function FeedPage() {
-  const [persona, setPersona] = useState<Persona>("ALL");
-  const reduce = useReducedMotion();
+  const { isSignedIn } = useUser();
 
-  // Сонгосон бүлэгт тохирох картуудыг шүүнэ
-  const cards = useMemo(() => {
-    if (persona === "ALL") return mockCards;
-    return mockCards.filter((c) => c.personas.includes(persona));
-  }, [persona]);
+  const [progress, setProgress] = useState<Progress | null>(null);
+  const [persona, setPersona] = useState<Persona | null>(null);
+  // Татсан үр дүнг аль бүлгийнх болохтой нь хамт хадгална. Ингэснээр
+  // "ачаалж байна" төлөвийг тооцож гаргах бөгөөд нэмэлт setState хэрэггүй.
+  const [loaded, setLoaded] = useState<{ persona: Persona; cards: FeedCard[] } | null>(null);
+  const [errorFor, setErrorFor] = useState<Persona | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [index, setIndex] = useState(0);
+
+  const [personaOpen, setPersonaOpen] = useState(false);
+  const [quizCard, setQuizCard] = useState<FeedCard | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [pop, setPop] = useState(false);
+
+  // Явцыг үргэлж шинэ утгаар нь уншихын тулд ref-д давхар хадгална
+  const progressRef = useRef<Progress | null>(null);
+
+  // 1. Төхөөрөмж дээрх явцыг уншина (зөвхөн хөтөч дээр, нэг удаа).
+  useEffect(() => {
+    const p = readProgress();
+    progressRef.current = p;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage бол гаднын сан; үүнийг зөвхөн холбогдсоны дараа уншиж болно
+    setProgress(p);
+    setPersona(p.persona ?? "ALL");
+    // Анх ирсэн хүнээс "Би хэн бэ?" гэж асууна
+    if (p.persona === null) setPersonaOpen(true);
+  }, []);
+
+  // 2. Бүлэг солигдоход (эсвэл дахин оролдоход) фийдийг татна.
+  useEffect(() => {
+    if (persona === null) return;
+    let cancelled = false;
+    fetchFeed(persona)
+      .then(({ cards }) => {
+        if (cancelled) return;
+        setLoaded({ persona, cards });
+        setIndex(0);
+      })
+      .catch(() => {
+        if (!cancelled) setErrorFor(persona);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [persona, reloadKey]);
+
+  // Одоогийн бүлгийнх биш бол "ачаалж байна" гэж үзнэ
+  const cards = loaded && loaded.persona === persona ? loaded.cards : null;
+  const error = errorFor !== null && errorFor === persona;
+
+  // 3. Бүлэг сонгох / солих
+  const pickPersona = useCallback(
+    (picked: Persona) => {
+      setPersonaOpen(false);
+      setPersona(picked);
+      const base = progressRef.current ?? readProgress();
+      const next = { ...base, persona: picked };
+      progressRef.current = next;
+      writeProgress(next);
+      setProgress(next);
+      if (isSignedIn) postPersona(picked);
+    },
+    [isSignedIn],
+  );
+
+  // 4. Карт үзсэн — өдөрт нэг удаа +1 оноо, шаардлагатай бол streak нэмэгдэнэ
+  const onCardViewed = useCallback((card: FeedCard) => {
+    const p = progressRef.current;
+    if (!p) return;
+    const { next, gained } = recordCardView(p, card.id);
+    progressRef.current = next;
+    setProgress(next);
+    if (gained > 0) {
+      setPop(true);
+      setTimeout(() => setPop(false), 900);
+    }
+    postCardView(card.id);
+  }, []);
+
+  // 5. Викторын зөв хариулт — асуулт тутамд нэг л удаа оноо
+  const onQuizPoints = useCallback((questionId: string, points: number) => {
+    const p = progressRef.current;
+    if (!p) return;
+    const { next } = recordQuizAnswer(p, questionId, points);
+    progressRef.current = next;
+    setProgress(next);
+  }, []);
+
+  // 6. Эхний виктор дуусахад зочноос зөөлөн асууна (нэг л удаа)
+  const onQuizFinished = useCallback(() => {
+    const p = progressRef.current;
+    if (!p || isSignedIn || p.askedToSave) return;
+    const next = { ...p, askedToSave: true };
+    progressRef.current = next;
+    writeProgress(next);
+    setProgress(next);
+    setSaveOpen(true);
+  }, [isSignedIn]);
+
+  const points = progress?.points ?? 0;
+  const streak = progress?.streak ?? 0;
+  const sheetOpen = personaOpen || quizCard !== null || saveOpen;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
-      <header>
-        <h1 className="text-[28px] font-extrabold tracking-tight text-ink-950 sm:text-[34px]">
-          Өнөөдрийн хууль
-        </h1>
-        <p className="mt-1.5 text-[15.5px] leading-relaxed text-ink-600">
-          Нэг карт — 60 секунд. Уншаад богино викторт хариул.
-        </p>
-      </header>
-
-      {/* Би хэн бэ? — хэрэглэгчийн бүлгийн шүүлтүүр */}
-      <div className="mt-5">
-        <h2 className="text-[12.5px] font-extrabold uppercase tracking-[0.12em] text-ink-600">
-          Би хэн бэ?
-        </h2>
-        <div className="no-scrollbar mt-2.5 flex gap-2 overflow-x-auto pb-1">
-          {filters.map((p) => {
-            const active = persona === p;
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPersona(p)}
-                aria-pressed={active}
-                className={cn(
-                  "press min-h-11 shrink-0 rounded-full border-2 px-4 text-[14.5px] font-bold",
-                  active
-                    ? "border-brand-600 bg-brand-600 text-white shadow-brand"
-                    : "border-ink-200 bg-white text-ink-700 hover:border-brand-400 hover:text-brand-700",
-                )}
-              >
-                {personaLabels[p]}
-              </button>
-            );
-          })}
+    <div className="mx-auto flex h-[calc(100dvh_-_4rem_-_var(--bottom-nav-h))] max-w-2xl flex-col px-4 py-3 sm:px-6">
+      {/* Дээд мөр: бүлэг + оноо + streak */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 pb-3">
+        <PersonaChip
+          persona={persona ?? "ALL"}
+          onClick={() => setPersonaOpen(true)}
+        />
+        <div className="ml-auto flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-point-100 px-3 py-1.5 text-[14px] font-extrabold tabular-nums text-point-700">
+            {points.toLocaleString("mn-MN")} оноо
+          </span>
+          <StreakFlame days={streak} size="sm" />
         </div>
       </div>
 
-      {/* Картууд */}
-      {cards.length === 0 ? (
-        <div className="mt-8">
+      {error ? (
+        <div className="flex min-h-0 flex-1 items-center">
+          <ErrorState
+            retry={() => {
+              setErrorFor(null);
+              setReloadKey((k) => k + 1);
+            }}
+          />
+        </div>
+      ) : cards === null ? (
+        <FeedSkeleton />
+      ) : cards.length === 0 ? (
+        <div className="flex min-h-0 flex-1 items-center">
           <EmptyState
             emoji="🔍"
-            title="Энэ бүлэгт тохирох карт алга"
-            description="Өөр бүлэг сонгоод үзээрэй. Шинэ хууль нэмэгдэх бүрт карт гарна."
+            title="Энэ бүлэгт тохирох хууль алга"
+            description="Одоогоор энэ бүлэгт зориулсан карт байхгүй байна. Бүх хуулийг харах боломжтой."
+            action={
+              <button
+                type="button"
+                onClick={() => pickPersona("ALL")}
+                className="press min-h-12 rounded-2xl bg-brand-600 px-5 text-[15px] font-extrabold text-white shadow-brand hover:bg-brand-700"
+              >
+                Бүгдийг харах
+              </button>
+            }
           />
         </div>
       ) : (
-        <div className="mt-6 flex flex-col gap-8">
-          {cards.map((card, i) => (
-            <motion.section
-              key={card.id}
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
-              transition={{
-                duration: reduce ? 0.2 : 0.45,
-                delay: reduce ? 0 : Math.min(i * 0.05, 0.2),
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="flex flex-col gap-4"
-            >
-              <LawCard card={card} />
-              <Quiz questions={card.quiz} answers={mockQuizAnswers} />
-            </motion.section>
-          ))}
-        </div>
+        <FeedDeck
+          cards={cards}
+          index={index}
+          onIndexChange={setIndex}
+          streak={streak}
+          paused={sheetOpen}
+          pointsPop={pop}
+          onOpenQuiz={setQuizCard}
+          onCardViewed={onCardViewed}
+        />
       )}
+
+      <PersonaSheet
+        open={personaOpen}
+        onClose={() => {
+          // Анх удаа хаавал "Бүгд" гэж үзнэ — уншихыг хэзээ ч хаахгүй
+          if (progressRef.current?.persona == null) pickPersona("ALL");
+          else setPersonaOpen(false);
+        }}
+        onPick={pickPersona}
+      />
+
+      <QuizSheet
+        open={quizCard !== null}
+        onClose={() => setQuizCard(null)}
+        questions={quizCard?.quiz ?? []}
+        onPoints={onQuizPoints}
+        onFinished={onQuizFinished}
+        hasNextCard={cards !== null && index < cards.length - 1}
+        onNextCard={() => setIndex((i) => i + 1)}
+      />
+
+      <SaveProgressSheet
+        open={saveOpen}
+        onClose={() => setSaveOpen(false)}
+        points={points}
+        streak={streak}
+      />
     </div>
   );
 }
