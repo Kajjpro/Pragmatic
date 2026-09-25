@@ -1,35 +1,45 @@
+// data/precomputed.json → DB. AI дуудахгүй, дахин ажиллуулж болно.
+//   npm run seed                         (.env-ийн DATABASE_URL руу)
+//   npm run seed -- --data=өөр/хавтас    (туршилтын өгөгдөл)
+// .env: DEMO_CITIZEN_EMAIL, DEMO_CITIZEN_COMMENT (демо иргэний бодит санал), STAFF_EMAILS
 import "dotenv/config";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { prisma } from "../lib/prisma";
-import { seedFromFiles } from "../lib/law/seed";
-import { STAGES, type Stage } from "../lib/law/types";
+import { parseSeedData, seedDatabase } from "../lib/seed";
 
-const args = process.argv.slice(2);
-const flag = (name: string) => args.includes(`--${name}`);
-const value = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
+const dataDir = process.argv.find((a) => a.startsWith("--data="))?.split("=")[1] ?? "data";
 
 async function main() {
-  const stage = value("stage");
-  if (stage && !STAGES.includes(stage as Stage)) {
-    throw new Error(`--stage must be one of ${STAGES.join(", ")}`);
-  }
+  const file = join(dataDir, "precomputed.json");
+  if (!existsSync(file)) throw new Error(`${file} алга — Dev 2-ийн scripts/precompute.ts үүнийг үүсгэнэ`);
 
-  const r = await seedFromFiles({
-    dataDir: value("data"),
-    replace: flag("replace"),
-    live: flag("live"),
-    stage: stage as Stage | undefined,
+  const r = await seedDatabase(parseSeedData(readFileSync(file, "utf8")), {
+    dataDir,
+    demoCitizenEmail: process.env.DEMO_CITIZEN_EMAIL?.trim() || undefined,
+    demoCitizenComment: process.env.DEMO_CITIZEN_COMMENT?.trim() || undefined,
+    staffEmails: (process.env.STAFF_EMAILS ?? "").split(",").map((e) => e.trim()).filter(Boolean),
   });
 
-  console.log(`AI results from: ${r.aiSource}`);
-  console.log(`bill ${r.billId}: ${r.clauses} clauses, ${r.changed} changed, ${r.approved} approved`);
-  if (r.needCheck.length) console.log(`⚠ check by hand (change could not be applied cleanly): ${r.needCheck.join(", ")}`);
-  console.log(`comments: ${r.commentsSaved} saved${r.commentsSkipped ? `, ${r.commentsSkipped} skipped (unknown clause)` : ""}`);
-  console.log(`${r.groups} groups, ${r.filtered} comments filtered out (kept, staff can restore)`);
+  console.log(`\nSeed → ${file}\n`);
+  console.table({
+    "Төсөл": r.bills,
+    "Заалт": r.clauses,
+    "Карт": r.cards,
+    "Асуулт": r.questions,
+    "Санал хураалт": r.voteEvents,
+    "Санал": r.comments,
+    "  үүнээс шүүгдсэн": r.filtered,
+    "Бүлэг": r.groups,
+  });
+  console.log(`Демо иргэн: ${r.demoCitizen ?? "(DEMO_CITIZEN_EMAIL хоосон)"}`);
+  console.log(`Ажилтан: ${r.staff.length ? r.staff.join(", ") : "(STAFF_EMAILS хоосон)"}`);
+  if (r.warnings.length) console.log(`\n⚠ ${r.warnings.length} анхааруулга:\n  - ${r.warnings.join("\n  - ")}`);
 }
 
 main()
   .catch((e) => {
-    console.error("\nseed failed:", e instanceof Error ? e.message : e);
+    console.error("\nseed амжилтгүй:", e instanceof Error ? e.message : e);
     process.exitCode = 1;
   })
   .finally(() => prisma.$disconnect());
