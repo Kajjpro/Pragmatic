@@ -26,5 +26,5 @@ export function PageHeader({
 
 // Хуудасны агуулгын өргөн (1120px) ба хажуугийн зай
 export function Container({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`mx-auto w-full max-w-[1120px] px-4 sm:px-6 ${className}`}>{children}</div>;
+  return <div className={`mx-auto w-full max-w-[1180px] px-4 sm:px-6 ${className}`}>{children}</div>;
 }

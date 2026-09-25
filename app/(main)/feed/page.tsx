@@ -14,12 +14,15 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { ListSkeleton } from "@/components/ui/page-loading";
 import { Button } from "@/components/ui/button";
+import { StreakPanel } from "@/components/feed/streak-panel";
+import { CheckCircle2, Circle } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 // ① Өнөөдрийн хууль. Өгөгдөл: GET /api/feed (DB-ээс, AI дуудахгүй).
 // Оноо, дараалсан өдөр: нэвтэрсэн бол сервер эрх мэдэлтэй; зочин бол төхөөрөмж дээр.
 export default function FeedPage() {
   const { isSignedIn } = useUser();
-  const { me } = useMe();
+  const { me, patch } = useMe();
 
   const [progress, setProgress] = useState<Progress | null>(null);
   const [override, setOverride] = useState<{ points: number; streak: number } | null>(null);
@@ -31,6 +34,10 @@ export default function FeedPage() {
   const [index, setIndex] = useState(0);
   const [gain, setGain] = useState(0); // сүүлд нэмэгдсэн оноо ("+3 оноо")
   const progressRef = useRef<Progress | null>(null);
+  const meRef = useRef(me);
+  useEffect(() => {
+    meRef.current = me;
+  }, [me]);
   const gainTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 1. Төхөөрөмж дээрх явцыг уншина
@@ -96,6 +103,13 @@ export default function FeedPage() {
       const result = await postCardView(card.id);
       if (result?.saved) {
         setOverride({ points: result.points ?? 0, streak: result.streak ?? 0 });
+        // Толгойн оноо, streak-ийг шууд шинэчилнэ (/api/me-г дахин татахгүй)
+        patch({
+          points: result.points ?? 0,
+          streak: result.streak ?? 0,
+          activeToday: true,
+          viewedCardIdsToday: Array.from(new Set([...(meRef.current?.viewedCardIdsToday ?? []), card.id])),
+        });
         showGain(result.pointsAwarded);
         return;
       }
@@ -106,7 +120,7 @@ export default function FeedPage() {
       setProgress(next);
       showGain(gained);
     },
-    [showGain],
+    [showGain, patch],
   );
 
   // 4. Асуултад хариулсан
@@ -114,6 +128,7 @@ export default function FeedPage() {
     (questionId: string, result: QuizAnswerResult) => {
       if (result.saved) {
         setOverride((s) => ({ points: result.points ?? s?.points ?? 0, streak: s?.streak ?? 0 }));
+        if (typeof result.points === "number") patch({ points: result.points });
         showGain(result.pointsAwarded);
         return;
       }
@@ -124,72 +139,116 @@ export default function FeedPage() {
       setProgress(next);
       showGain(gained);
     },
-    [showGain],
+    [showGain, patch],
   );
 
   const points = override?.points ?? me?.points ?? progress?.points ?? 0;
   const streak = override?.streak ?? me?.streak ?? progress?.streak ?? 0;
 
+  const viewedIds = me ? (me.viewedCardIdsToday ?? []) : (progress?.viewedToday ?? []);
+
   return (
-    <Container className="max-w-3xl py-8">
-      <div className="flex flex-col gap-3 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <Container className="py-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-[28px] font-bold">Өнөөдрийн хууль</h1>
-          <p className="mt-1 text-[15px] text-muted">
-            Сонирхол: {personaLabels[active]}.{" "}
-            <button type="button" onClick={() => setChoosing(true)} className="font-medium text-action underline underline-offset-2">
-              Солих
-            </button>
+          <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-gold-fg">60 секундэд нэг хууль</p>
+          <h1 className="mt-1 text-[30px] font-bold sm:text-[34px]">Өнөөдрийн хууль</h1>
+          <p className="mt-1 max-w-xl text-[15.5px] text-muted">
+            Өмнө нь ямар байсан, ямар болох, чамд юу хамаатайг гурван алхамаар.
           </p>
         </div>
-        <dl className="flex gap-6 text-[14px]">
-          <div>
-            <dt className="text-muted">Дараалсан өдөр</dt>
-            <dd className="font-serif text-[22px] font-bold tabular-nums text-heading">{streak}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Оролцооны оноо</dt>
-            <dd className="font-serif text-[22px] font-bold tabular-nums text-heading">
-              {points.toLocaleString("mn-MN")}
-              {gain > 0 ? <span className="ml-2 font-sans text-[14px] font-medium text-good-fg">+{gain} оноо</span> : null}
-            </dd>
-          </div>
-        </dl>
+        <div className="flex items-center gap-2 text-[14px]">
+          <span className="text-muted">Сонирхол:</span>
+          <span className="rounded-full border border-line bg-surface px-3 py-1 font-semibold">{personaLabels[active]}</span>
+          <button type="button" onClick={() => setChoosing(true)} className="font-semibold text-fg underline underline-offset-2">
+            Солих
+          </button>
+          {gain > 0 ? <span className="animate-pop rounded-full bg-good px-2 py-0.5 text-[13px] font-bold text-white">+{gain} оноо</span> : null}
+        </div>
       </div>
 
-      <div className="mt-6">
-        {needsChoice ? (
-          <PersonaSelect initial={persona} onPick={pickPersona} onCancel={choosing ? () => setChoosing(false) : undefined} />
-        ) : error ? (
-          <ErrorState
-            description={`${error.message}. Түр хүлээгээд дахин оролдоно уу.`}
-            retry={() => {
-              setFailed(null);
-              setReloadKey((k) => k + 1);
-            }}
-          />
-        ) : cards === null ? (
-          <ListSkeleton rows={1} />
-        ) : cards.length === 0 ? (
-          <EmptyState
-            title={active === "ALL" ? "Одоогоор карт нийтлэгдээгүй байна" : "Энэ сонголтод тохирох карт алга"}
-            description={
-              active === "ALL"
-                ? "Шинэ хуулийн өөрчлөлт нэмэгдмэгц энд харагдана. Одоохондоо хуулийн жагсаалтыг үзэж болно."
-                : "Одоогоор энэ бүлэгт зориулсан карт байхгүй байна. Бүх картыг харах боломжтой."
-            }
-            action={active === "ALL" ? undefined : <Button onClick={() => pickPersona("ALL")}>Бүх картыг харах</Button>}
-          />
-        ) : (
-          <CardReader
-            cards={cards}
-            index={index}
-            onIndexChange={setIndex}
-            isSignedIn={Boolean(isSignedIn)}
-            onCardViewed={onCardViewed}
-            onAnswered={onAnswered}
-          />
-        )}
+      <div className="mt-7 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0">
+          {needsChoice ? (
+            <PersonaSelect initial={persona} onPick={pickPersona} onCancel={choosing ? () => setChoosing(false) : undefined} />
+          ) : error ? (
+            <ErrorState
+              description={`${error.message}. Түр хүлээгээд дахин оролдоно уу.`}
+              retry={() => {
+                setFailed(null);
+                setReloadKey((k) => k + 1);
+              }}
+            />
+          ) : cards === null ? (
+            <ListSkeleton rows={1} />
+          ) : cards.length === 0 ? (
+            <EmptyState
+              title={active === "ALL" ? "Одоогоор карт нийтлэгдээгүй байна" : "Энэ сонголтод тохирох карт алга"}
+              description={
+                active === "ALL"
+                  ? "Шинэ хуулийн өөрчлөлт нэмэгдмэгц энд харагдана. Одоохондоо хуулийн жагсаалтыг үзэж болно."
+                  : "Одоогоор энэ бүлэгт зориулсан карт байхгүй байна. Бүх картыг харах боломжтой."
+              }
+              action={active === "ALL" ? undefined : <Button onClick={() => pickPersona("ALL")}>Бүх картыг харах</Button>}
+            />
+          ) : (
+            <CardReader
+              cards={cards}
+              index={index}
+              onIndexChange={setIndex}
+              viewedIds={viewedIds}
+              isSignedIn={Boolean(isSignedIn)}
+              onCardViewed={onCardViewed}
+              onAnswered={onAnswered}
+            />
+          )}
+        </div>
+
+        <aside className="flex flex-col gap-5 lg:sticky lg:top-36 lg:self-start">
+          <StreakPanel />
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line">
+            <div className="bg-surface px-4 py-3">
+              <dt className="text-[13px] text-muted">Нөлөөний оноо</dt>
+              <dd className="font-serif text-[24px] font-bold tabular-nums text-heading">{points.toLocaleString("mn-MN")}</dd>
+            </div>
+            <div className="bg-surface px-4 py-3">
+              <dt className="text-[13px] text-muted">Өнөөдөр уншсан</dt>
+              <dd className="font-serif text-[24px] font-bold tabular-nums text-heading">
+                {viewedIds.length} <span className="font-sans text-[14px] font-medium text-muted">карт</span>
+              </dd>
+            </div>
+          </dl>
+          {cards && cards.length > 0 ? (
+            <nav aria-label="Өнөөдрийн картууд" className="rounded-2xl border border-line bg-surface p-4">
+              <h2 className="font-sans text-[13.5px] font-semibold text-heading">Өнөөдрийн картууд</h2>
+              <ol className="mt-2 flex max-h-80 flex-col gap-0.5 overflow-y-auto scroll-slim">
+                {cards.map((c, i) => {
+                  const done = viewedIds.includes(c.id);
+                  return (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => setIndex(i)}
+                        aria-current={i === index ? "true" : undefined}
+                        className={cn(
+                          "flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-[14px] hover:bg-surface-2",
+                          i === index && "bg-surface-2 font-semibold",
+                        )}
+                      >
+                        {done ? (
+                          <CheckCircle2 aria-label="Уншсан" className="mt-0.5 h-4 w-4 shrink-0 text-good" />
+                        ) : (
+                          <Circle aria-label="Уншаагүй" className="mt-0.5 h-4 w-4 shrink-0 text-line-strong" />
+                        )}
+                        <span className="line-clamp-2">{c.hook}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
+          ) : null}
+        </aside>
       </div>
     </Container>
   );

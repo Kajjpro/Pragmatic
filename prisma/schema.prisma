@@ -247,6 +247,7 @@ model Card {
   before      String? // "Одоо"
   after       String? // "Болох нь"
   youMeaning  String // "Чамд юу гэсэн үг вэ"
+  sourceQuote String? // төслөөс яг хуулсан өгүүлбэр — BILL картын «Ийм болно»
   personas    Persona[]
   sourceUrl   String
   order       Int            @default(0)

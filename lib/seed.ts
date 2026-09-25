@@ -37,6 +37,7 @@ export type SeedData = {
     youMeaning: string;
     personas: string[];
     sourceUrl: string;
+    sourceQuote?: string | null; // төслөөс яг хуулсан өгүүлбэр (картын «Ийм болно»)
     order: number;
     quiz: { question: string; options: string[]; correctIndex: number; explanation: string }[];
   }[];
@@ -183,6 +184,7 @@ export async function seedDatabase(data: SeedData, opts: SeedOptions = {}): Prom
       before: card.before ?? null,
       after: card.after ?? null,
       youMeaning: card.youMeaning,
+      sourceQuote: card.sourceQuote?.trim() || null,
       personas: personas.length > 0 ? personas : (["ALL"] as Persona[]),
       sourceUrl: card.sourceUrl,
       order: card.order,

@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 /* ============================================================
-   ХАРИУ — ДИЗАЙН СИСТЕМ (албан ёсны, тайван, итгэл төрүүлэх)
+   ХАРИУ — ДИЗАЙН СИСТЕМ (цагаан давамгай, албан ёсны, хөх өнгөгүй)
    Tailwind v4: tailwind.config.js байхгүй, бүх токен энд.
 
    Хоёр давхарга:
    1. Утгын токен (page, surface, fg, muted, line, heading, primary, action,
-      del/add, gold, ok/bad/warn) — гэрэл/бараан горимд солигдоно.
+      del/add, gold, ok/bad/warn). Зөвхөн гэрэл горим.
       Шинэ компонентууд ЗӨВХӨН эдгээрийг хэрэглэнэ.
    2. Хуучин нэртэй шатлал (brand, ink, ok, bad, point) — шинэ өнгөнд
       дахин тааруулсан тул хуучин код (ажилтны хэсэг) ч шинэ өнгөтэй болно.
@@ -35,8 +35,10 @@
   --color-gold: var(--gold);
   --color-gold-fg: var(--gold-fg);
   --color-gold-bg: var(--gold-bg);
+  --color-good: var(--good);
   --color-good-fg: var(--good-fg);
   --color-good-bg: var(--good-bg);
+  --color-bad: var(--bad);
   --color-bad-fg: var(--bad-fg);
   --color-bad-bg: var(--bad-bg);
   --color-warn-fg: var(--warn-fg);
@@ -50,77 +52,80 @@
 }
 
 @theme {
-  /* ── Навигацийн хөх (brand = primary navy #0F2A4A) ── */
-  --color-brand-50: #eef2f7;
-  --color-brand-100: #dce4ee;
-  --color-brand-200: #b9c8db;
-  --color-brand-300: #8fa5bf;
-  --color-brand-400: #5c7899;
-  --color-brand-500: #2f4f74;
-  --color-brand-600: #0f2a4a;
-  --color-brand-700: #0b2039;
-  --color-brand-800: #08182b;
-  --color-brand-900: #06111f;
-  --color-brand-950: #040b14;
+  /* ── Хуучин "brand" шатлал → албан ёсны нүүрс-саарал (хөх өнгө огт хэрэглэхгүй) ── */
+  --color-brand-50: #f9fafb;
+  --color-brand-100: #f3f4f6;
+  --color-brand-200: #e5e7eb;
+  --color-brand-300: #d1d5db;
+  --color-brand-400: #9ca3af;
+  --color-brand-500: #4b5563;
+  --color-brand-600: #1f2937;
+  --color-brand-700: #111827;
+  --color-brand-800: #0c0d0f;
+  --color-brand-900: #0a0a0b;
+  --color-brand-950: #070708;
 
-  /* ── Үйлдлийн ногоон-хөх (холбоос, фокус) #0F6E68 ── */
-  --color-teal-50: #e7f3f2;
-  --color-teal-100: #cde7e5;
-  --color-teal-600: #0f6e68;
-  --color-teal-700: #0b5651;
+  /* ── Хуучин "teal" → намуухан маргад ногоон (амжилт, тусгагдсан) ── */
+  --color-teal-50: #ecfdf5;
+  --color-teal-100: #d1fae5;
+  --color-teal-600: #059669;
+  --color-teal-700: #047857;
 
-  /* ── Тэмдгийн бүдэг алт (зөвхөн ⑥) ── */
-  --color-gold-50: #f8f4ea;
-  --color-gold-200: #decb9c;
-  --color-gold-600: #9a7b2f;
-  --color-gold-800: #6e5720;
+  /* ── Алт → намуухан шаргал (таамаг, дараалсан өдөр, тэмдэг) ── */
+  --color-gold-50: #fffbeb;
+  --color-gold-200: #fde68a;
+  --color-gold-600: #d97706;
+  --color-gold-800: #b45309;
 
-  /* ── Хуучин "оноо" шатлал → тайван саарал-хөх (оноо тоглоом шиг гялалзахгүй) ── */
-  --color-point-100: #eef2f7;
-  --color-point-200: #dce4ee;
-  --color-point-300: #b9c8db;
-  --color-point-400: #dce4ee;
-  --color-point-500: #b9c8db;
-  --color-point-600: #2f4f74;
-  --color-point-700: #0f2a4a;
+  /* ── Хуучин "оноо" шатлал → шаргал ── */
+  --color-point-100: #fef3c7;
+  --color-point-200: #fde68a;
+  --color-point-300: #fcd34d;
+  --color-point-400: #fde68a;
+  --color-point-500: #fcd34d;
+  --color-point-600: #d97706;
+  --color-point-700: #b45309;
 
   /* ── Амжилт / алдаа ── */
-  --color-ok-50: #ecfdf3;
-  --color-ok-100: #dcfae6;
-  --color-ok-500: #17b26a;
-  --color-ok-700: #067647;
-  --color-ok-800: #085d3a;
-  --color-bad-50: #fef3f2;
-  --color-bad-100: #fee4e2;
-  --color-bad-600: #b42318;
-  --color-bad-800: #912018;
+  --color-ok-50: #ecfdf5;
+  --color-ok-100: #d1fae5;
+  --color-ok-500: #10b981;
+  --color-ok-700: #047857;
+  --color-ok-800: #065f46;
+  --color-bad-50: #fef2f2;
+  --color-bad-100: #fee2e2;
+  --color-bad-600: #dc2626;
+  --color-bad-800: #991b1b;
 
   /* ── Текст ба саарал ── */
-  --color-ink-950: #0b1220;
+  --color-ink-950: #0c0d0f;
   --color-ink-900: #111827;
   --color-ink-700: #374151;
   --color-ink-600: #4b5563;
   --color-ink-500: #6b7280;
   --color-ink-300: #d1d5db;
   --color-ink-200: #e5e7eb;
-  --color-ink-100: #f1f2f5;
-  --color-ink-50: #f7f8fa;
+  --color-ink-100: #f3f4f6;
+  --color-ink-50: #f9fafb;
 
-  /* ── Хэлбэр: бүгд 8px, нимгэн хүрээ, маш бүдэг сүүдэр ── */
+  /* ── Хэлбэр: зөөлөн булан, нимгэн хүрээ, бүдэг сүүдэр ── */
   --radius-md: 8px;
-  --radius-lg: 8px;
-  --radius-xl: 8px;
-  --radius-2xl: 8px;
-  --radius-3xl: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
 
-  --shadow-soft: 0 1px 2px rgb(16 24 40 / 0.05);
-  --shadow-card: 0 1px 3px rgb(16 24 40 / 0.06);
-  --shadow-lift: 0 4px 12px rgb(16 24 40 / 0.08);
-  --shadow-brand: 0 1px 2px rgb(16 24 40 / 0.08);
-  --shadow-point: 0 1px 2px rgb(16 24 40 / 0.08);
+  --shadow-soft: 0 1px 2px rgb(17 24 39 / 0.04);
+  --shadow-card: 0 1px 2px rgb(17 24 39 / 0.04), 0 1px 3px rgb(17 24 39 / 0.06);
+  --shadow-lift: 0 10px 30px -8px rgb(17 24 39 / 0.14), 0 2px 6px rgb(17 24 39 / 0.05);
+  --shadow-brand: 0 1px 2px rgb(17 24 39 / 0.08);
+  --shadow-point: 0 1px 2px rgb(17 24 39 / 0.08);
 
   --animate-fade-in: fade-in 0.18s ease-out both;
   --animate-rise: rise 0.2s ease-out both;
+  --animate-pop: pop 0.9s ease-out both;
+  --animate-slide-left: slide-left 0.22s ease-out both;
+  --animate-slide-right: slide-right 0.22s ease-out both;
 }
 
 @keyframes fade-in {
@@ -131,70 +136,53 @@
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes pop {
+  0% { opacity: 0; transform: translateY(4px) scale(0.9); }
+  20% { opacity: 1; transform: translateY(0) scale(1.08); }
+  35% { transform: scale(1); }
+  100% { opacity: 1; }
+}
+@keyframes slide-left {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-right {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 
-/* ── Гэрэл горим (анхдагч) ── */
+/* ── Зөвхөн гэрэл горим: цагаан давамгай, албан ёсны (бараан горим, хөх өнгө байхгүй) ── */
 :root,
 .theme-light {
   color-scheme: light;
-  --page: #f7f8fa;
+  --page: #f9fafb;
   --surface: #ffffff;
-  --surface-2: #f1f3f6;
+  --surface-2: #f3f4f6;
   --fg: #111827;
   --muted: #4b5563;
   --line: #e5e7eb;
   --line-strong: #d1d5db;
-  --heading: #0f2a4a;
-  --primary: #0f2a4a;
-  --primary-hover: #0b2039;
+  --heading: #111827;
+  --primary: #1f2937;
+  --primary-hover: #111827;
   --on-primary: #ffffff;
-  --action: #0f6e68;
-  --action-bg: #e7f3f2;
-  --del-fg: #b42318;
-  --del-bg: #fee4e2;
-  --add-fg: #067647;
-  --add-bg: #dcfae6;
-  --gold: #9a7b2f;
-  --gold-fg: #6e5720;
-  --gold-bg: #f8f4ea;
-  --good-fg: #067647;
-  --good-bg: #dcfae6;
-  --bad-fg: #b42318;
-  --bad-bg: #fee4e2;
-  --warn-fg: #93370d;
-  --warn-bg: #fef0c7;
-}
-
-/* ── Бараан горим ── */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --page: #0b1220;
-    --surface: #111a2b;
-    --surface-2: #172236;
-    --fg: #e5e7eb;
-    --muted: #a3adbd;
-    --line: #26324a;
-    --line-strong: #34425e;
-    --heading: #e8eef6;
-    --primary: #c9d6e8;
-    --primary-hover: #dce4ee;
-    --on-primary: #0b1220;
-    --action: #5cc8bf;
-    --action-bg: #10302e;
-    --del-fg: #fda29b;
-    --del-bg: #3b1413;
-    --add-fg: #75e0a7;
-    --add-bg: #0b2e1d;
-    --gold: #d4b872;
-    --gold-fg: #e3cd94;
-    --gold-bg: #2a2414;
-    --good-fg: #75e0a7;
-    --good-bg: #0b2e1d;
-    --bad-fg: #fda29b;
-    --bad-bg: #3b1413;
-    --warn-fg: #fec84b;
-    --warn-bg: #3a2a0b;
-  }
+  --action: #1f2937;
+  --action-bg: #f3f4f6;
+  --del-fg: #b91c1c;
+  --del-bg: #fee2e2;
+  --add-fg: #047857;
+  --add-bg: #d1fae5;
+  --gold: #d97706;
+  --gold-fg: #b45309;
+  --gold-bg: #fffbeb;
+  --good: #059669;
+  --good-fg: #047857;
+  --good-bg: #ecfdf5;
+  --bad: #dc2626;
+  --bad-fg: #b91c1c;
+  --bad-bg: #fef2f2;
+  --warn-fg: #b45309;
+  --warn-bg: #fffbeb;
 }
 
 html,
@@ -210,13 +198,15 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Гарчиг бүр PT Serif */
-h1,
-h2,
-h3 {
-  font-family: var(--font-serif);
-  color: var(--heading);
-  line-height: 1.25;
+/* Гарчиг бүр PT Serif. @layer base дотор байх тул font-sans зэрэг класс давамгайлж чадна. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    color: var(--heading);
+    line-height: 1.25;
+  }
 }
 
 /* Доод цэсний өндөр. Компьютерт доод цэс байхгүй тул 0. */
