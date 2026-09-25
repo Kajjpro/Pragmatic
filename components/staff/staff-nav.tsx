@@ -5,11 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 
 const items = [
-  { href: "/staff", label: "Өнөөдрийн ажил" },
-  { href: "/staff/reports", label: "Тайлан шалгагч" },
-  { href: "/staff/registry", label: "Хяналтын бүртгэл" },
-  { href: "/staff/intake", label: "Тайлан хүлээн авах" },
-  { href: "/staff/ask", label: "AI туслах" },
+  { href: "/staff", label: "Миний төслүүд" },
 ];
 
 export function StaffNav() {
