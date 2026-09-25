@@ -2,6 +2,7 @@
 // AI хэзээ ч дуудахгүй — зөвхөн DB-ээс уншина.
 import { prisma } from "@/lib/prisma";
 import { PERSONAS, type FeedCard, type Persona, type PublicBadge, type VoteEvent } from "@/lib/types";
+import type { WordPart } from "@/lib/law/types";
 
 export function isPersona(v: unknown): v is Persona {
   return typeof v === "string" && (PERSONAS as readonly string[]).includes(v);
@@ -36,6 +37,8 @@ export async function getFeed(persona: Persona): Promise<FeedCard[]> {
       order: true,
       projectId: true,
       clauseId: true,
+      project: { select: { title: true } },
+      clause: { select: { number: true, diff: true } },
       questions: {
         orderBy: { order: "asc" },
         select: { id: true, question: true, options: true },
@@ -43,8 +46,11 @@ export async function getFeed(persona: Persona): Promise<FeedCard[]> {
     },
   });
 
-  return cards.map(({ questions, ...c }) => ({
+  return cards.map(({ questions, project, clause, ...c }) => ({
     ...c,
+    projectTitle: project?.title ?? null,
+    clauseNumber: clause?.number ?? null,
+    diff: clause ? (clause.diff as unknown as WordPart[]) : null,
     quiz: questions.map((q) => ({ id: q.id, question: q.question, options: toOptions(q.options) })),
   }));
 }

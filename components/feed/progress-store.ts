@@ -63,7 +63,7 @@ export function writeProgress(p: Progress): void {
 }
 
 // Карт үзэхэд: өдөрт нэг удаа +1 оноо, шаардлагатай бол streak шинэчилнэ.
-// Оноо нэмэгдсэн эсэхийг буцаана (PointsPop харуулах эсэх).
+// Хэдэн оноо нэмэгдсэнийг буцаана ("+1 оноо" гэж харуулахад).
 export function recordCardView(
   p: Progress,
   cardId: string,

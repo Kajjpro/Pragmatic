@@ -1,6 +1,5 @@
 // Backend ↔ frontend гэрээ (Хариу v2) — CLAUDE.md-ийн "Data model" ба "API".
-// Dev 3-ийн түр lib/types.ts-ийн нэр, талбарууд ЯГ хэвээр. Dev 1-ийн нэмсэн талбар бүр `?` (заавал биш),
-// тиймээс lib/mock.ts-ийн объектууд өөрчлөлтгүй таарна.
+// Dev 1-ийн нэмсэн талбар бүр `?` (заавал биш).
 // Огноо бүр JSON-оор ISO текст ("2026-09-25T10:00:00.000Z") болж ирнэ.
 
 // ── Хуучин (v1) төрлүүд — хуулийн харьцуулалт, санал ──
@@ -26,7 +25,7 @@ export type Persona = (typeof PERSONAS)[number];
 export const personaLabels: Record<Persona, string> = {
   STUDENT: "Сурагч",
   DRIVER: "Жолооч",
-  WORKER: "Ажил хийдэг",
+  WORKER: "Ажил эрхэлдэг",
   PARENT: "Эцэг эх",
   ALL: "Бүгд",
 };
@@ -56,6 +55,9 @@ export type FeedCard = {
   quiz: QuizQuestionView[];
   projectId?: string | null; // холбоотой төсөл → /bills/[projectId]
   clauseId?: string | null;
+  projectTitle?: string | null; // хуулийн нэр (картын дээд талд)
+  clauseNumber?: string | null; // CHANGE картын заалтын дугаар
+  diff?: WordPart[] | null; // CHANGE картын үгийн ялгаа (тодруулахад)
 };
 
 // POST /api/quiz/[id]/answer { chosenIndex } → QuizAnswerResult
