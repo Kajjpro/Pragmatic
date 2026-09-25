@@ -6,7 +6,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { PointsPop } from "@/components/ui/points-pop";
 import { Confetti } from "./confetti";
 import { postQuizAnswer } from "./feed-data";
-import type { QuizQuestionView } from "@/lib/types";
+import type { QuizAnswerResult, QuizQuestionView } from "@/lib/types";
 import { cn } from "@/lib/cn";
 
 type Feedback = {
@@ -21,7 +21,7 @@ export function QuizSheet({
   open,
   onClose,
   questions,
-  onPoints,
+  onAnswered,
   onFinished,
   hasNextCard,
   onNextCard,
@@ -29,7 +29,7 @@ export function QuizSheet({
   open: boolean;
   onClose: () => void;
   questions: QuizQuestionView[];
-  onPoints: (questionId: string, points: number) => void;
+  onAnswered: (questionId: string, result: QuizAnswerResult) => void;
   onFinished: () => void;
   hasNextCard: boolean;
   onNextCard: () => void;
@@ -40,6 +40,7 @@ export function QuizSheet({
   const [done, setDone] = useState(false);
   const [pop, setPop] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
   const reduce = useReducedMotion();
 
   // Карт сонгоогүй үед асуулт ирэхгүй. Sheet-ийн хүүхдүүд хаалттай үед ч
@@ -52,20 +53,30 @@ export function QuizSheet({
   async function choose(i: number) {
     if (feedback || busy) return;
     setBusy(true);
-    const res = await postQuizAnswer(q.id, i);
-    setFeedback({
-      chosen: i,
-      correct: res.correct,
-      correctIndex: res.correctIndex,
-      explanation: res.explanation,
-    });
-    if (res.correct) {
-      setCorrectCount((c) => c + 1);
-      onPoints(q.id, res.pointsAwarded || 3);
-      setPop(true);
-      setTimeout(() => setPop(false), 900);
+    setFailed(null);
+    try {
+      const res = await postQuizAnswer(q.id, i);
+      setFeedback({
+        chosen: i,
+        correct: res.correct,
+        correctIndex: res.correctIndex,
+        explanation: res.explanation,
+      });
+      onAnswered(q.id, res);
+      if (res.correct) {
+        setCorrectCount((c) => c + 1);
+        // Оноо зөвхөн нэвтэрсэн, анхны зөв оролдлогод өгөгдөнө
+        if (res.pointsAwarded > 0) {
+          setPop(true);
+          setTimeout(() => setPop(false), 900);
+        }
+      }
+    } catch (e) {
+      // Асуултыг түгжихгүй — дахин дарж болно
+      setFailed(e instanceof Error ? e.message : "Хариуг шалгаж чадсангүй");
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   function next() {
@@ -87,6 +98,7 @@ export function QuizSheet({
       setFeedback(null);
       setCorrectCount(0);
       setDone(false);
+      setFailed(null);
     }, 250);
   }
 
@@ -190,6 +202,15 @@ export function QuizSheet({
                   );
                 })}
               </div>
+
+              {failed ? (
+                <p
+                  role="alert"
+                  className="mt-3 rounded-2xl border-2 border-bad-100 bg-bad-50 p-3 text-[14.5px] font-semibold text-bad-800"
+                >
+                  {failed} — дахин дарна уу.
+                </p>
+              ) : null}
 
               {feedback ? (
                 <motion.div

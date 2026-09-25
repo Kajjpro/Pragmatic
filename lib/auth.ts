@@ -46,12 +46,32 @@ export async function getUser() {
     cu?.primaryEmailAddress?.emailAddress ??
     cu?.emailAddresses[0]?.emailAddress ??
     null;
+  const name = [cu?.firstName, cu?.lastName].filter(Boolean).join(" ") || null;
+
+  // scripts/seed.ts демо бүртгэлийг "seed:<имэйл>" id-тай үүсгэдэг.
+  // Тэр имэйлээр (Clerk баталгаажуулсан) анх нэвтрэхэд тэр мөрийг өөрийнх болгоно — оноо, санал нь хадгалагдана.
+  if (email) {
+    const seeded = await prisma.user.findFirst({
+      where: { clerkId: { startsWith: "seed:" }, email: { equals: email, mode: "insensitive" } },
+    });
+    if (seeded) {
+      return prisma.user.update({
+        where: { id: seeded.id },
+        data: {
+          clerkId: userId,
+          name: seeded.name ?? name,
+          role: seeded.role === "STAFF" || isStaffEmail(email) ? "STAFF" : "CITIZEN",
+        },
+      });
+    }
+  }
+
   return prisma.user.upsert({
     where: { clerkId: userId },
     update: {},
     create: {
       clerkId: userId,
-      name: [cu?.firstName, cu?.lastName].filter(Boolean).join(" ") || null,
+      name,
       email,
       role: isStaffEmail(email) ? "STAFF" : "CITIZEN",
     },

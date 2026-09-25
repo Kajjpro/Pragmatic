@@ -1,5 +1,5 @@
 import { HttpError } from "@/lib/auth";
-import { BadInputError } from "./pipeline";
+import { BadInputError } from "./types";
 
 export async function readBody(req: Request): Promise<Record<string, unknown>> {
   const body = await req.json().catch(() => null);

@@ -3,9 +3,9 @@ import { ai as defaultAi, type AiApi } from "./ai";
 import { applyChanges } from "./apply";
 import { compareWords } from "./compare";
 import { splitIntoClauses } from "./split";
-import type { ClauseResult, Stage, WordPart } from "./types";
+import { BadInputError, type ClauseResult, type Stage, type WordPart } from "./types";
 
-export class BadInputError extends Error {}
+export { BadInputError };
 
 export type BillInput = {
   title: string;

@@ -3,7 +3,7 @@ import { AgeHook } from "@/components/home/age-hook";
 import { PhoneMockup } from "@/components/home/phone-mockup";
 import { EnginePreview } from "@/components/home/engine-preview";
 import { SiteFooter } from "@/components/shell/site-footer";
-import { mockCards } from "@/lib/mock";
+import { getFeed } from "@/lib/feed";
 
 // ① ② ⑥ — бүтээгдэхүүний гурван алхам
 const steps = [
@@ -33,21 +33,29 @@ const steps = [
   },
 ];
 
-export default function HomePage() {
-  // Утасны макетад эхний 3 картыг харуулна.
-  // /api/feed бэлэн болмогц mockCards-ын оронд тэндээс татна.
-  const previewCards = mockCards.slice(0, 3);
+export default async function HomePage() {
+  // Утасны макетад бодит фийдийн эхний 3 картыг харуулна.
+  // DB бэлэн биш байсан ч нүүр хуудас унахгүй — макетыг л нуух болно.
+  const previewCards = (await getFeed("ALL").catch(() => [])).slice(0, 3);
 
   return (
     <div className="flex flex-col">
       {/* ── 1-Р ХЭСЭГ: ДЭГЭЭ ─────────────────────────────── */}
       <section className="chrome-brand relative overflow-hidden">
         <div className="grain" aria-hidden />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.1fr_auto] lg:gap-14 lg:py-24">
+        <div
+          className={
+            previewCards.length > 0
+              ? "relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.1fr_auto] lg:gap-14 lg:py-24"
+              : "relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:py-24"
+          }
+        >
           <AgeHook />
-          <div className="flex justify-center lg:justify-end">
-            <PhoneMockup cards={previewCards} />
-          </div>
+          {previewCards.length > 0 ? (
+            <div className="flex justify-center lg:justify-end">
+              <PhoneMockup cards={previewCards} />
+            </div>
+          ) : null}
         </div>
       </section>
 

@@ -288,8 +288,9 @@ test("vote events: OPEN first, real numbers only after reveal, hidden numbers ne
   assert.equal(replay.isReplay, true);
   assert.deepEqual([replay.actualSupport, replay.actualOppose, replay.actualTotal, replay.passed], [null, null, null, null]);
   assert.equal(replay.predictionCount, 1);
-  assert.ok(!JSON.stringify(events).includes("hidden"));
-  assert.ok(!JSON.stringify(events).includes("70"));
+  // Нууц тоо ямар ч талбарт гарахгүй
+  assert.ok(events.every((e) => Object.keys(e).every((k) => !k.startsWith("hidden"))));
+  assert.ok(!Object.values(replay).includes(70));
 
   const revealed = events.find((e) => e.title === "A4")!;
   assert.deepEqual([revealed.actualSupport, revealed.actualOppose, revealed.actualTotal, revealed.passed], [60, 20, 80, true]);

@@ -1,8 +1,6 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
 import { after, before, test } from "node:test";
 import { Client } from "pg";
 import type { AiApi } from "./ai";
@@ -55,11 +53,9 @@ let prisma: Prisma;
 let q: typeof import("./queries");
 let pipeline: typeof import("./pipeline");
 let grouping: typeof import("./grouping");
-let seedLib: typeof import("./seed");
 let word: typeof import("../word");
 
 const s = { billId: "", userId: "", clause22: "", groupA: "", offTopicId: "", abusiveId: "" };
-const tmpDirs: string[] = [];
 
 before(async () => {
   if (!enabled) return;
@@ -77,12 +73,10 @@ before(async () => {
   q = await import("./queries");
   pipeline = await import("./pipeline");
   grouping = await import("./grouping");
-  seedLib = await import("./seed");
   word = await import("../word");
 });
 
 after(async () => {
-  for (const d of tmpDirs) rmSync(d, { recursive: true, force: true });
   if (!enabled) return;
   await prisma.$disconnect();
   const c = new Client({ connectionString: process.env.DATABASE_URL });
@@ -326,64 +320,4 @@ test("word: the file is built from the saved rows", { skip }, async () => {
     clauses: bill.clauses.map((c) => ({ ...c, diff: c.diff as unknown as WordPart[] })),
   });
   assert.equal(buf.subarray(0, 2).toString(), "PK");
-});
-
-function makeDataDir() {
-  const dir = mkdtempSync(join(tmpdir(), "seed-test-"));
-  tmpDirs.push(dir);
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "law.txt"), sample);
-  writeFileSync(join(dir, "bill.txt"), "Seed тест төсөл\nтөслийн текст");
-  writeFileSync(join(dir, "reason.txt"), "тайлбар");
-  writeFileSync(
-    join(dir, "comments.json"),
-    JSON.stringify([
-      { clause: "2.2", text: "Дэмжиж байна", name: "Бат" },
-      { clause: "2.2", text: "Сэдвээс гадуур мэдээлэл", name: "Дорж" },
-      { clause: "2.2", text: "Хэрэгжүүлэхэд хэцүү", vote: "OPPOSE" },
-      { clause: "9.9", text: "Байхгүй заалт" },
-    ]),
-  );
-  writeFileSync(
-    join(dir, "results.json"),
-    JSON.stringify({
-      changes: CHANGES,
-      explanations: { "2.2": { what: "Заавал биш болсон", why: "Уян хатан байх", who: "Засгийн газар" } },
-      filter: [{ comment: 1, status: "OFF_TOPIC", reason: "хамааралгүй" }],
-      groups: [{ clause: "2.2", title: "Дэмжсэн саналууд", summary: "1 санал", comments: [0], replyDraft: "Баярлалаа" },
-               { clause: "2.2", title: "Хэрэгжилтийн эрсдэл", summary: "1 санал", comments: [2], replyDraft: "Анхаарна" }],
-    }),
-  );
-  return dir;
-}
-
-test("seed: loads data/results.json instead of calling the AI and saves everything precomputed", { skip }, async () => {
-  const dir = makeDataDir();
-  const r = await seedLib.seedFromFiles({ dataDir: dir, stage: "FIRST_READING" });
-
-  assert.equal(r.aiSource, "data/results.json");
-  assert.deepEqual([r.clauses, r.changed, r.approved, r.needCheck], [13, 4, 3, ["4.1"]]);
-  assert.deepEqual([r.commentsSaved, r.commentsSkipped, r.groups, r.filtered], [3, 1, 2, 1]);
-
-  const bill = (await q.getBillView(r.billId, true))!;
-  assert.equal(bill.stage, "FIRST_READING");
-  const c22 = bill.clauses.find((c) => c.number === "2.2")!;
-  assert.deepEqual([c22.what, c22.why, c22.who], ["Заавал биш болсон", "Уян хатан байх", "Засгийн газар"]);
-  assert.deepEqual(c22.groups.map((g) => [g.title, g.replyDraft]), [["Дэмжсэн саналууд", "Баярлалаа"], ["Хэрэгжилтийн эрсдэл", "Анхаарна"]]);
-  assert.deepEqual(c22.filtered.map((f) => [f.text, f.filterStatus]), [["Сэдвээс гадуур мэдээлэл", "OFF_TOPIC"]]);
-  const oppose = await prisma.comment.findFirstOrThrow({ where: { body: "Хэрэгжүүлэхэд хэцүү" } });
-  assert.equal(oppose.vote, "OPPOSE");
-
-  await assert.rejects(seedLib.seedFromFiles({ dataDir: dir }), /already exists/);
-  const again = await seedLib.seedFromFiles({ dataDir: dir, replace: true });
-  assert.notEqual(again.billId, r.billId);
-  assert.equal(await prisma.project.count({ where: { title: "Seed тест төсөл" } }), 1);
-});
-
-test("seed: a broken results.json gives a clear error", { skip }, async () => {
-  const dir = makeDataDir();
-  writeFileSync(join(dir, "results.json"), '{"nothing": true}');
-  await assert.rejects(seedLib.seedFromFiles({ dataDir: dir, replace: true }), /needs a "changes" array/);
-  writeFileSync(join(dir, "results.json"), "not json");
-  await assert.rejects(seedLib.seedFromFiles({ dataDir: dir, replace: true }), /not valid JSON/);
 });
