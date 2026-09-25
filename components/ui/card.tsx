@@ -1,24 +1,14 @@
 import { cn } from "@/lib/cn";
 
-// Үндсэн карт. interactive={true} бол хулгана ойртуулахад бага зэрэг дээшилнэ.
+// Үндсэн хүрээ: цагаан гадаргуу, нимгэн хүрээ, маш бүдэг сүүдэр.
 export function Card({
   children,
   className,
-  interactive,
+  as: Tag = "div",
 }: {
   children: React.ReactNode;
   className?: string;
-  interactive?: boolean;
+  as?: "div" | "section" | "article" | "aside";
 }) {
-  return (
-    <div
-      className={cn(
-        "rounded-3xl border border-ink-200 bg-white shadow-card",
-        interactive && "card-lift hover:border-brand-300 hover:shadow-lift",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
+  return <Tag className={cn("rounded-lg border border-line bg-surface shadow-card", className)}>{children}</Tag>;
 }

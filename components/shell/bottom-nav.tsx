@@ -2,52 +2,36 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/cn";
-import { navItems } from "./nav-items";
-import { Icon } from "./nav-icon";
+import { isActive, navItems } from "./nav-items";
 
-// Гар утасны доод цэс. Компьютерт харагдахгүй (дээд цэс ажиллана).
+// Гар утас, таблетын доод цэс (компьютерт дээд цэс ажиллана).
 export function BottomNav() {
   const path = usePathname() ?? "/";
-  const reduce = useReducedMotion();
 
   return (
     <nav
       aria-label="Үндсэн цэс"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 backdrop-blur-lg md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="mx-auto flex max-w-lg items-stretch">
+      <ul className="mx-auto grid max-w-lg grid-cols-5">
         {navItems.map((item) => {
-          // "/" зөвхөн яг таарвал идэвхтэй; бусад нь дэд хуудсыг хамруулна
-          const active =
-            item.href === "/" ? path === "/" : path.startsWith(item.href);
+          const active = isActive(item.href, path);
+          const Icon = item.icon;
           return (
-            <li key={item.href} className="flex-1">
+            <li key={item.href}>
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-1 pb-2 pt-2.5 text-[11.5px] font-bold transition-colors",
-                  active ? "text-brand-700" : "text-ink-500 hover:text-ink-700",
+                  "flex flex-col items-center justify-center gap-1 pt-2 pb-1.5 text-[11.5px] font-medium",
+                  active ? "text-heading" : "text-muted hover:text-fg",
                 )}
                 style={{ minHeight: "var(--bottom-nav-h)" }}
               >
-                {/* Идэвхтэй зүйлийн дээд зураас — цэс хооронд гулсана */}
-                {active ? (
-                  <motion.span
-                    layoutId="bottom-nav-active"
-                    transition={
-                      reduce
-                        ? { duration: 0 }
-                        : { type: "spring", stiffness: 420, damping: 34 }
-                    }
-                    className="absolute inset-x-5 top-0 h-[3px] rounded-full bg-brand-600"
-                  />
-                ) : null}
-                <Icon name={item.icon} active={active} />
-                {item.label}
+                <Icon aria-hidden className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
+                <span className={cn(active && "font-semibold")}>{item.short}</span>
               </Link>
             </li>
           );
