@@ -63,6 +63,10 @@ DATABASE_URL="<production>" STAFF_EMAILS="..." npm run seed
 # 3. Санал хураалтын таамаг: ParliamentAPI → VoteEvent
 #    Ажилтнаар нэвтэрч POST /api/staff/vote-events/sync, эсвэл:
 DATABASE_URL="<production>" PARLIAMENT_API_URL="..." npm run vote -- sync
+
+# 4. Бүх идэвхтэй хуулийн төсөл: LawForum → Project (seed-ийн дараа; дахин ажиллуулж болно, давхардуулахгүй)
+#    Ажилтнаар нэвтэрч /staff → «LawForum-оос шинэчлэх», эсвэл:
+DATABASE_URL="<production>" npm run sync:projects
 ```
 
 ## 5. Production-ийг шалгах

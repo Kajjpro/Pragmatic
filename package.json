@@ -14,7 +14,8 @@
     "reset-demo": "tsx scripts/reset-demo.ts",
     "vote": "tsx --conditions=react-server scripts/vote-events.ts",
     "seed": "tsx scripts/seed.ts",
-    "smoke:pages": "tsx scripts/smoke-pages.ts"
+    "smoke:pages": "tsx scripts/smoke-pages.ts",
+    "sync:projects": "tsx scripts/sync-projects.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

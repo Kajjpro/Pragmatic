@@ -5,6 +5,7 @@ import { stageLabels } from "@/lib/labels";
 import { Pill } from "@/components/ui/pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClass } from "@/components/ui/button";
+import { SyncProjectsButton } from "@/components/staff/sync-projects-button";
 
 export default async function StaffPage() {
   // Ажилтны харагдац: бүх төсөл, бүх тоо (батлаагүй, шүүгдсэн гэх мэт)
@@ -17,9 +18,12 @@ export default async function StaffPage() {
           <h1 className="text-[30px] font-bold">Төслүүд</h1>
           <p className="mt-1 text-muted">Заалт бүрийн харьцуулалт, иргэдийн санал, хариуг эндээс шалгана.</p>
         </div>
-        <Link href="/staff/bills/new" className={buttonClass("primary")}>
-          <Plus aria-hidden className="h-4 w-4" /> Шинэ төсөл оруулах
-        </Link>
+        <div className="flex flex-wrap items-start gap-3">
+          <SyncProjectsButton />
+          <Link href="/staff/bills/new" className={buttonClass("primary")}>
+            <Plus aria-hidden className="h-4 w-4" /> Шинэ төсөл оруулах
+          </Link>
+        </div>
       </section>
 
       {bills.length === 0 ? (

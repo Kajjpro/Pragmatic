@@ -43,6 +43,8 @@ export default async function BillPage({ params }: PageProps<"/bills/[id]">) {
   const whys = Array.from(new Set(clauses.map((c) => c.why).filter((w): w is string => Boolean(w) && w !== NO_REASON)));
   const personaText = bill.personas.map((p) => personaLabels[p]).join(", ");
   const count = (t: string) => clauses.filter((c) => c.changeType === t).length;
+  // Задлан шинжилсэн эсэх: заалтын харьцуулалт эсвэл энгийн тайлбартай карт байгаа эсэх
+  const analysed = clauses.length > 0 || bill.hasCard;
 
   return (
     <>
@@ -60,7 +62,19 @@ export default async function BillPage({ params }: PageProps<"/bills/[id]">) {
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] text-muted">
             {bill.typeTitle ? <span>{bill.typeTitle}</span> : null}
             {bill.categoryTitle ? <Pill>{bill.categoryTitle}</Pill> : null}
+            {bill.projectNumber ? <span>Дугаар: {bill.projectNumber}</span> : null}
+            {bill.publishedAt ? <span>LawForum-д нийтэлсэн: {formatDate(new Date(bill.publishedAt))}</span> : null}
             <span>Сүүлд шинэчилсэн: {formatDate(new Date(bill.updatedAt))}</span>
+            {bill.lawforumComments !== null ? (
+              <span>
+                LawForum дээр <b className="tabular-nums text-fg">{bill.lawforumComments}</b> сэтгэгдэл
+                {bill.lawforumViews !== null ? (
+                  <>
+                    , <b className="tabular-nums text-fg">{bill.lawforumViews}</b> үзэлт
+                  </>
+                ) : null}
+              </span>
+            ) : null}
             {bill.sourceUrl ? (
               <a href={bill.sourceUrl} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-action underline underline-offset-2">
                 Эх сурвалж: LawForum <ExternalLink aria-hidden className="h-3.5 w-3.5" />
@@ -94,18 +108,26 @@ export default async function BillPage({ params }: PageProps<"/bills/[id]">) {
               </ul>
             ) : bill.cardMeaning ? (
               <p className="mt-3">{bill.cardMeaning}</p>
+            ) : bill.summary ? (
+              <p className="mt-3">{bill.summary}</p>
             ) : null}
 
-            <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="text-[14px] font-semibold text-heading">Хэнд хамаарах вэ</dt>
-                <dd className="mt-1 text-[15.5px]">{whos[0] ?? (personaText || "Төсөлд тодорхой дурдаагүй.")}</dd>
-              </div>
-              <div>
-                <dt className="text-[14px] font-semibold text-heading">Яагаад</dt>
-                <dd className="mt-1 text-[15.5px]">{whys[0] ?? NO_REASON}</dd>
-              </div>
-            </dl>
+            {analysed ? (
+              <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <dt className="text-[14px] font-semibold text-heading">Хэнд хамаарах вэ</dt>
+                  <dd className="mt-1 text-[15.5px]">{whos[0] ?? (personaText || "Төсөлд тодорхой дурдаагүй.")}</dd>
+                </div>
+                <div>
+                  <dt className="text-[14px] font-semibold text-heading">Яагаад</dt>
+                  <dd className="mt-1 text-[15.5px]">{whys[0] ?? NO_REASON}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="mt-4 text-[14.5px] text-muted">
+                Энэ төслийг бид хараахан задлан шинжлээгүй тул «хэнд, яагаад» гэсэн тайлбар алга. Доорх LawForum-ын танилцуулгыг уншина уу.
+              </p>
+            )}
 
             {clauses.length > 0 ? (
               <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-4 text-[14.5px]">
