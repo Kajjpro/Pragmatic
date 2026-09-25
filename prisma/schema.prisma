@@ -1,0 +1,147 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CITIZEN
+  STAFF
+}
+
+enum Vote {
+  SUPPORT
+  OPPOSE
+  NEUTRAL
+}
+
+enum CommentSource {
+  WEB
+  PAPER
+}
+
+enum ClusterStatus {
+  OPEN
+  ANSWERED
+}
+
+enum ProjectSource {
+  LAWFORUM
+  UPLOAD
+}
+
+model User {
+  id              String         @id @default(cuid())
+  clerkId         String         @unique
+  name            String?
+  email           String?
+  role            Role           @default(CITIZEN)
+  committee       String? 
+  comments        Comment[]
+  approvedReplies Reply[]        @relation("ApprovedBy")
+  notifications   Notification[]
+  createdAt       DateTime       @default(now())
+}
+
+model Project {
+  id            String        @id @default(cuid())
+  lawforumId    Int?          @unique
+  title         String
+  description   String?
+  projectNumber String?
+  typeTitle     String?
+  categoryTitle String?
+  status        Int?
+  stage         Int?
+  slugUrl       String?
+  publishedAt   DateTime?
+  allowComments Boolean       @default(true)
+  lawforumStats Json? 
+  source        ProjectSource @default(LAWFORUM)
+  clauses       Clause[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+
+model Clause {
+  id           String    @id @default(cuid())
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number       String 
+  heading      String?
+  originalText String
+  plainText    String? 
+  order        Int
+  comments     Comment[]
+  clusters     Cluster[]
+
+  @@index([projectId])
+}
+
+model Cluster {
+  id        String        @id @default(cuid())
+  clauseId  String
+  clause    Clause        @relation(fields: [clauseId], references: [id], onDelete: Cascade)
+  label     String 
+  summary   String?
+  status    ClusterStatus @default(OPEN)
+  comments  Comment[]
+  reply     Reply?
+  createdAt DateTime      @default(now())
+
+  @@index([clauseId])
+}
+
+model Comment {
+  id             String        @id @default(cuid())
+  clauseId       String
+  clause         Clause        @relation(fields: [clauseId], references: [id], onDelete: Cascade)
+  userId         String? 
+  user           User?         @relation(fields: [userId], references: [id])
+  vote           Vote          @default(NEUTRAL)
+  body           String
+  source         CommentSource @default(WEB)
+  petitionerName String? 
+  paperImageUrl  String?
+  clusterId      String?
+  cluster        Cluster?      @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+  suspicious     Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+
+  @@index([clauseId])
+  @@index([clusterId])
+}
+
+model Reply {
+  id            String         @id @default(cuid())
+  clusterId     String         @unique
+  cluster       Cluster        @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  aiDraft       String?
+  finalText     String?
+  approvedById  String?
+  approvedBy    User?          @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedAt    DateTime?
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyId   String
+  reply     Reply     @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, replyId])
+}
