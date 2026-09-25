@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate",
+    "test": "tsx --test lib/law/*.test.ts",
+    "test:db": "DATABASE_SCHEMA=test_scratch tsx --test lib/law/db.test.ts",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
@@ -15,6 +19,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "diff": "^9.0.0",
+    "docx": "^9.7.2",
     "dotenv": "^18.0.3",
     "gsap": "^3.15.0",
     "next": "16.3.6",

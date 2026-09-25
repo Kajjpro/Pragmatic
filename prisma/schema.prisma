@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../app/generated/prisma"
@@ -38,13 +33,40 @@ enum ProjectSource {
   UPLOAD
 }
 
+enum Stage {
+  DISCUSS_DECISION
+  FIRST_READING
+  FINAL_READING
+  FINAL_APPROVAL
+}
+
+enum ChangeType {
+  ADDED
+  REMOVED
+  CHANGED
+  UNCHANGED
+}
+
+enum Reflection {
+  PENDING
+  REFLECTED
+  NOT_REFLECTED
+}
+
+enum FilterStatus {
+  RELEVANT
+  OFF_TOPIC
+  ABUSIVE
+  DUPLICATE
+}
+
 model User {
   id              String         @id @default(cuid())
   clerkId         String         @unique
   name            String?
   email           String?
   role            Role           @default(CITIZEN)
-  committee       String? 
+  committee       String?
   comments        Comment[]
   approvedReplies Reply[]        @relation("ApprovedBy")
   notifications   Notification[]
@@ -52,51 +74,67 @@ model User {
 }
 
 model Project {
-  id            String        @id @default(cuid())
-  lawforumId    Int?          @unique
-  title         String
-  description   String?
-  projectNumber String?
-  typeTitle     String?
-  categoryTitle String?
-  status        Int?
-  stage         Int?
-  slugUrl       String?
-  publishedAt   DateTime?
-  allowComments Boolean       @default(true)
-  lawforumStats Json? 
-  source        ProjectSource @default(LAWFORUM)
-  clauses       Clause[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  lawforumId     Int?          @unique
+  title          String
+  description    String?
+  projectNumber  String?
+  typeTitle      String?
+  categoryTitle  String?
+  status         Int?
+  lawforumStage  Int?
+  stage          Stage         @default(DISCUSS_DECISION)
+  slugUrl        String?
+  publishedAt    DateTime?
+  allowComments  Boolean       @default(true)
+  lawforumStats  Json?
+  source         ProjectSource @default(LAWFORUM)
+  currentLawText String?
+  amendmentText  String?
+  reasonText     String?
+  clauses        Clause[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
-
 model Clause {
-  id           String    @id @default(cuid())
-  projectId    String
-  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  number       String 
-  heading      String?
-  originalText String
-  plainText    String? 
-  order        Int
-  comments     Comment[]
-  clusters     Cluster[]
+  id          String     @id @default(cuid())
+  projectId   String
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number      String
+  heading     String?
+  oldText     String?
+  newText     String?
+  changeType  ChangeType @default(UNCHANGED)
+  diff        Json       @default("[]")
+  sourceQuote String?
+  applyError  Boolean    @default(false)
+  what        String?
+  why         String?
+  who         String?
+  approved    Boolean    @default(false)
+  plainText   String?
+  order       Int
+  comments    Comment[]
+  clusters    Cluster[]
 
   @@index([projectId])
 }
 
 model Cluster {
-  id        String        @id @default(cuid())
-  clauseId  String
-  clause    Clause        @relation(fields: [clauseId], references: [id], onDelete: Cascade)
-  label     String 
-  summary   String?
-  status    ClusterStatus @default(OPEN)
-  comments  Comment[]
-  reply     Reply?
-  createdAt DateTime      @default(now())
+  id         String        @id @default(cuid())
+  clauseId   String
+  clause     Clause        @relation(fields: [clauseId], references: [id], onDelete: Cascade)
+  label      String
+  summary    String?
+  status     ClusterStatus @default(OPEN)
+  replyDraft String?
+  replyText  String?
+  reflection Reflection    @default(PENDING)
+  repliedAt  DateTime?
+  comments   Comment[]
+  reply      Reply?
+  createdAt  DateTime      @default(now())
 
   @@index([clauseId])
 }
@@ -105,16 +143,19 @@ model Comment {
   id             String        @id @default(cuid())
   clauseId       String
   clause         Clause        @relation(fields: [clauseId], references: [id], onDelete: Cascade)
-  userId         String? 
+  userId         String?
   user           User?         @relation(fields: [userId], references: [id])
   vote           Vote          @default(NEUTRAL)
   body           String
   source         CommentSource @default(WEB)
-  petitionerName String? 
+  petitionerName String?
   paperImageUrl  String?
   clusterId      String?
   cluster        Cluster?      @relation(fields: [clusterId], references: [id], onDelete: SetNull)
   suspicious     Boolean       @default(false)
+  filterStatus   FilterStatus?
+  filterReason   String?
+  restored       Boolean       @default(false)
   createdAt      DateTime      @default(now())
 
   @@index([clauseId])

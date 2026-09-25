@@ -1,56 +1,36 @@
-// POST /api/comments  { clauseId, body }
-// Иргэний саналыг DB-руу хадгална. Нэвтэрсэн байх шаардлагатай.
 import { NextResponse } from "next/server";
-import { requireUser, handleError } from "@/lib/auth";
+import { handleError, HttpError, requireUser } from "@/lib/auth";
+import { readBody, str } from "@/lib/law/http";
 import { prisma } from "@/lib/prisma";
+
+const VOTES = ["SUPPORT", "OPPOSE", "NEUTRAL"] as const;
 
 export async function POST(req: Request) {
   try {
     const user = await requireUser();
-    const { clauseId, body } = await req.json();
+    const body = await readBody(req);
+    const clauseId = str(body, "clauseId");
+    const text = str({ text: body.text ?? body.body }, "text", { min: 3, max: 1000 });
 
-    if (!clauseId || typeof clauseId !== "string") {
-      return NextResponse.json({ error: "Заалт байхгүй байна" }, { status: 400 });
-    }
-    const text = typeof body === "string" ? body.trim() : "";
-    if (text.length < 3) {
-      return NextResponse.json(
-        { error: "Санал хэтэрхий богино байна" },
-        { status: 400 },
-      );
-    }
-    if (text.length > 1000) {
-      return NextResponse.json(
-        { error: "Санал 1000 тэмдэгтээс хэтэрч болохгүй" },
-        { status: 400 },
-      );
+    const vote = body.vote ?? "NEUTRAL";
+    if (typeof vote !== "string" || !(VOTES as readonly string[]).includes(vote)) {
+      throw new HttpError(400, `"vote" нь SUPPORT, OPPOSE эсвэл NEUTRAL байх ёстой`);
     }
 
     const clause = await prisma.clause.findUnique({
       where: { id: clauseId },
-      select: { id: true, project: { select: { allowComments: true } } },
+      select: { approved: true, changeType: true, project: { select: { allowComments: true } } },
     });
-    if (!clause) {
-      return NextResponse.json({ error: "Заалт олдсонгүй" }, { status: 404 });
-    }
-    if (!clause.project.allowComments) {
-      return NextResponse.json(
-        { error: "Энэ хуульд санал авахыг хаасан байна" },
-        { status: 403 },
-      );
-    }
+    const visible =
+      clause && clause.changeType !== "UNCHANGED" && (clause.approved || user.role === "STAFF");
+    if (!visible) throw new HttpError(404, "Заалт олдсонгүй");
+    if (!clause.project.allowComments) throw new HttpError(403, "Энэ төсөлд санал авахаа больсон");
 
     const comment = await prisma.comment.create({
-      data: {
-        clauseId,
-        userId: user.id,
-        body: text,
-        source: "WEB",
-      },
-      select: { id: true, createdAt: true },
+      data: { clauseId, userId: user.id, body: text, vote: vote as (typeof VOTES)[number] },
+      select: { id: true },
     });
-
-    return NextResponse.json({ ok: true, comment });
+    return NextResponse.json({ id: comment.id }, { status: 201 });
   } catch (e) {
     return handleError(e);
   }
