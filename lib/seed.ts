@@ -89,7 +89,7 @@ const clauseId = (billKey: string, number: string) => `seed-${billKey}-${number}
 const questionId = (cardKey: string, index: number) => `${cardKey}-q${index + 1}`;
 const commentId = (key: string) => `seed-${key}`;
 const groupId = (key: string) => `seed-${key}`;
-const DEMO_COMMENT_ID = "seed-demo-citizen";
+export const DEMO_COMMENT_ID = "seed-demo-citizen"; // демо иргэний санал (reset-demo ч ашиглана)
 
 const VOTES = ["SUPPORT", "OPPOSE", "NEUTRAL"] as const;
 const FILTER_STATUSES: FilterStatus[] = ["RELEVANT", "OFF_TOPIC", "ABUSIVE", "DUPLICATE"];
