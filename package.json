@@ -9,7 +9,8 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "test": "tsx --test lib/*.test.ts lib/law/*.test.ts",
-    "test:db": "DATABASE_SCHEMA=test_scratch tsx --test lib/law/db.test.ts",
+    "test:db": "DATABASE_SCHEMA=test_scratch tsx --test --test-concurrency=1 lib/law/db.test.ts lib/points.db.test.ts",
+    "smoke": "tsx scripts/smoke-api.ts",
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {

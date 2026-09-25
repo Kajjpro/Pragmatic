@@ -1,4 +1,6 @@
+import { awardRelevantComment } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
+import type { MyComment } from "@/lib/types";
 import type { ChangeType, FilterStatus, Stage, WordPart } from "./types";
 
 export const REFLECTIONS = ["PENDING", "REFLECTED", "NOT_REFLECTED"] as const;
@@ -192,7 +194,7 @@ export async function getBillView(id: string, staff: boolean): Promise<BillDetai
   };
 }
 
-export async function getMyComments(userId: string) {
+export async function getMyComments(userId: string): Promise<MyComment[]> {
   const comments = await prisma.comment.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -200,6 +202,7 @@ export async function getMyComments(userId: string) {
       id: true,
       body: true,
       vote: true,
+      filterStatus: true,
       createdAt: true,
       clause: {
         select: {
@@ -226,15 +229,18 @@ export async function getMyComments(userId: string) {
   });
 
   return comments.map(({ body, cluster, clause, ...c }) => ({
-    ...c,
+    id: c.id,
     text: body,
+    vote: c.vote,
+    filterStatus: c.filterStatus,
+    createdAt: c.createdAt.toISOString(),
     clause: {
       id: clause.id,
       number: clause.number,
       changeType: clause.changeType,
       oldText: clause.oldText,
       newText: clause.newText,
-      diff: clause.diff,
+      diff: clause.diff as unknown as WordPart[],
       billId: clause.project.id,
       billTitle: clause.project.title,
     },
@@ -244,7 +250,7 @@ export async function getMyComments(userId: string) {
       summary: cluster.summary,
       replyText: cluster.repliedAt ? cluster.replyText : null,
       reflection: cluster.repliedAt ? cluster.reflection : ("PENDING" as ReflectionValue),
-      repliedAt: cluster.repliedAt,
+      repliedAt: cluster.repliedAt ? cluster.repliedAt.toISOString() : null,
     },
   }));
 }
@@ -266,7 +272,7 @@ export async function saveGroupReply(
 export async function restoreComment(id: string) {
   const comment = await prisma.comment.findUnique({
     where: { id },
-    select: { filterStatus: true, restored: true },
+    select: { filterStatus: true, restored: true, userId: true },
   });
   if (!comment) return null;
 
@@ -275,6 +281,8 @@ export async function restoreComment(id: string) {
 
   if (wasFiltered) {
     await prisma.comment.update({ where: { id }, data: { filterStatus: "RELEVANT", restored: true } });
+    // Ажилтан хамааралтай гэж сэргээсэн → иргэнд +2 (AI шүүлтэй адил, нэг л удаа)
+    if (comment.userId) await awardRelevantComment(comment.userId, id);
   }
   return { id, restored: true as const };
 }

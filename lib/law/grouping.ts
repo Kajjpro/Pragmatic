@@ -1,3 +1,4 @@
+import { awardRelevantComment } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import { ai as defaultAi, type AiApi } from "./ai";
 import type { FilterStatus } from "./types";
@@ -36,7 +37,7 @@ export async function groupBillComments(
     const unfiltered = await prisma.comment.findMany({
       where: { clauseId: clause.id, clusterId: null, suspicious: false, filterStatus: null },
       orderBy: { createdAt: "asc" },
-      select: { id: true, body: true },
+      select: { id: true, body: true, userId: true },
     });
     if (unfiltered.length > 0) {
       await pause();
@@ -54,6 +55,8 @@ export async function groupBillComments(
           data: { filterStatus: status, filterReason: v?.reason || null },
         });
         if (status !== "RELEVANT") filteredCount++;
+        // Иргэний санал хамааралтай бол +2 оноо (нэг саналд нэг л удаа)
+        else if (c.userId) await awardRelevantComment(c.userId, c.id);
       }
     }
 

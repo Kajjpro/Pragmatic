@@ -29,3 +29,22 @@ export function str(
 export function asHttpError(e: unknown): unknown {
   return e instanceof BadInputError ? new HttpError(400, e.message) : e;
 }
+
+// Бүхэл тоо (жишээ нь chosenIndex, supportGuess). min/max хоёулаа багтана.
+export function int(body: Record<string, unknown>, key: string, opts: { min: number; max: number }): number {
+  const v = body[key];
+  if (v === undefined || v === null || v === "") throw new HttpError(400, `"${key}" талбар шаардлагатай`);
+  if (typeof v !== "number" || !Number.isInteger(v)) throw new HttpError(400, `"${key}" нь бүхэл тоо байх ёстой`);
+  if (v < opts.min || v > opts.max) {
+    throw new HttpError(400, `"${key}" нь ${opts.min}-${opts.max} хооронд байх ёстой`);
+  }
+  return v;
+}
+
+// true / false
+export function bool(body: Record<string, unknown>, key: string): boolean {
+  const v = body[key];
+  if (v === undefined || v === null) throw new HttpError(400, `"${key}" талбар шаардлагатай`);
+  if (typeof v !== "boolean") throw new HttpError(400, `"${key}" нь true/false байх ёстой`);
+  return v;
+}
