@@ -11,12 +11,30 @@ const manrope = Manrope({
   display: "swap",
 });
 
+const DESCRIPTION =
+  "Хуулийг 60 секундийн картаар ойлго, санал хураалтыг таамагла, саналаа хуульд тусга. Монгол Улсын Их Хурлыг залуучуудад ойртуулах платформ.";
+
 export const metadata: Metadata = {
   // Хуваалцах үеийн OG зургийн замыг бүтэн URL болгоно
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "Хариу — Хууль 60 секундэд",
-  description:
-    "Хуулийг 60 секундийн картаар ойлго, санал хураалтыг таамагла, саналаа хуульд тусга. Монгол Улсын Их Хурлыг залуучуудад ойртуулах платформ.",
+  applicationName: "Хариу",
+  title: {
+    default: "Хариу — Хууль 60 секундэд",
+    template: "%s · Хариу",
+  },
+  description: DESCRIPTION,
+  openGraph: {
+    siteName: "Хариу",
+    locale: "mn_MN",
+    type: "website",
+    title: "Хариу — Хууль 60 секундэд",
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Хариу — Хууль 60 секундэд",
+    description: DESCRIPTION,
+  },
 };
 
 // Гар утсанд зориулсан — хэмжээг нь өөрчлөх боломжтой (хандалтын шаардлага)

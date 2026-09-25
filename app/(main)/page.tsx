@@ -1,9 +1,25 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AgeHook } from "@/components/home/age-hook";
 import { PhoneMockup } from "@/components/home/phone-mockup";
 import { EnginePreview } from "@/components/home/engine-preview";
 import { SiteFooter } from "@/components/shell/site-footer";
 import { getFeed } from "@/lib/feed";
+
+// Нүүр хуудсыг хуваалцахад гарах гарчиг, тайлбар
+export const metadata: Metadata = {
+  title: "Хууль 60 секундэд. Таамагла. Өөрчил.",
+  description:
+    "Та УИХ-ыг хэдэн настайдаа анх мэдсэн бэ? Хуулийн өөрчлөлтийг 60 секундэд ойлгож, санал хураалтыг таамаглаж, саналаа хуульд тусга.",
+  openGraph: {
+    siteName: "Хариу",
+    locale: "mn_MN",
+    type: "website",
+    title: "Хууль 60 секундэд. Таамагла. Өөрчил.",
+    description:
+      "Монгол Улсын Их Хурлыг залуучуудын өдөр тутмын дадал болгох платформ.",
+  },
+};
 
 // ① ② ⑥ — бүтээгдэхүүний гурван алхам
 const steps = [

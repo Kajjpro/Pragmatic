@@ -8,7 +8,13 @@ import { ReflectionBadge } from "./reflection-badge";
 
 // Ажилтан бүлэг тус бүрд нэг хариу бичиж, «Тусгасан / Тусгаагүй» гэж шийднэ.
 // Хариу нь POST /api/groups/[id]/reply-ээр DB-д хадгалагдана.
-export function GroupCard({ group }: { group: GroupView }) {
+export function GroupCard({
+  group,
+  onSaved,
+}: {
+  group: GroupView;
+  onSaved?: (reflection: ReflectionValue) => void;
+}) {
   const router = useRouter();
   const [text, setText] = useState(group.replyText ?? group.replyDraft ?? "");
   const [saving, setSaving] = useState<ReflectionValue | null>(null);
@@ -35,6 +41,7 @@ export function GroupCard({ group }: { group: GroupView }) {
         setError(data?.error ?? "Хадгалахад алдаа гарлаа");
         return;
       }
+      onSaved?.(reflection); // ажлын ширээ мэдэгдэл харуулна
       router.refresh(); // серверээс шинэчилсэн өгөгдлийг татна
     } catch {
       setError("Сүлжээний алдаа. Дахин оролдоно уу.");
@@ -46,20 +53,20 @@ export function GroupCard({ group }: { group: GroupView }) {
   const busy = saving !== null;
 
   return (
-    <article className="flex flex-col rounded-2xl border border-ink-200 bg-white p-4 shadow-[0_18px_40px_-30px_rgba(15,42,99,0.3)]">
+    <article className="flex flex-col rounded-2xl border border-ink-200 bg-white p-5 shadow-card">
       <header className="flex flex-wrap items-center gap-2">
         <ReflectionBadge value={group.reflection} />
-        <span className="text-[13px] font-semibold text-ink-600">
+        <span className="text-[15px] font-bold text-ink-600">
           {group.commentCount} санал
         </span>
         {group.replyText ? (
-          <span className="ml-auto text-[13px] font-bold text-emerald-700">
+          <span className="ml-auto text-[15px] font-bold text-ok-800">
             ✓ Хадгалсан
           </span>
         ) : null}
       </header>
 
-      <h4 className="mt-2.5 text-[16px] font-bold leading-snug text-ink-900">
+      <h4 className="mt-3 text-[19px] font-extrabold leading-snug text-ink-950">
         {group.title}
       </h4>
       {group.summary ? (
@@ -79,7 +86,7 @@ export function GroupCard({ group }: { group: GroupView }) {
       />
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[13px]">
+        <div className="text-[15px]">
           {error ? (
             <span className="font-semibold text-rose-700">{error}</span>
           ) : (
@@ -94,7 +101,7 @@ export function GroupCard({ group }: { group: GroupView }) {
             onClick={() => save("NOT_REFLECTED")}
             disabled={busy}
             className={cn(
-              "press min-h-11 rounded-full px-4 text-[13.5px] font-bold ring-1 ring-inset disabled:opacity-60",
+              "press min-h-14 rounded-2xl px-6 text-[17px] font-extrabold ring-2 ring-inset disabled:opacity-60",
               group.reflection === "NOT_REFLECTED"
                 ? "bg-rose-600 text-white ring-rose-600"
                 : "bg-white text-rose-700 ring-rose-300 hover:bg-rose-50",
@@ -107,7 +114,7 @@ export function GroupCard({ group }: { group: GroupView }) {
             onClick={() => save("REFLECTED")}
             disabled={busy}
             className={cn(
-              "press min-h-11 rounded-full px-4 text-[13.5px] font-bold ring-1 ring-inset disabled:opacity-60",
+              "press min-h-14 rounded-2xl px-6 text-[17px] font-extrabold ring-2 ring-inset disabled:opacity-60",
               group.reflection === "REFLECTED"
                 ? "bg-emerald-600 text-white ring-emerald-600"
                 : "bg-white text-emerald-700 ring-emerald-300 hover:bg-emerald-50",

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { stageLabels, stageOrder } from "@/lib/labels";
 
 const inputClass =
-  "w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-[15px] leading-relaxed text-ink-900 outline-none transition placeholder:text-ink-500 focus:border-parliament-500 focus:ring-2 focus:ring-parliament-200 disabled:bg-parliament-50/40";
+  "w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-[15px] leading-relaxed text-ink-900 outline-none transition placeholder:text-ink-500 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 disabled:bg-brand-50/40";
 
 export function NewBillForm() {
   const router = useRouter();
@@ -121,7 +121,7 @@ export function NewBillForm() {
         <button
           type="submit"
           disabled={busy}
-          className="press inline-flex min-h-12 items-center gap-2 rounded-full bg-gold-400 px-6 text-[15px] font-bold text-parliament-950 shadow-[0_8px_24px_-8px_rgba(255,198,7,0.6)] hover:bg-gold-300 disabled:cursor-wait disabled:opacity-60"
+          className="press inline-flex min-h-12 items-center gap-2 rounded-full bg-point-400 px-6 text-[15px] font-bold text-ink-950 shadow-[0_8px_24px_-8px_rgba(255,198,7,0.6)] hover:bg-point-300 disabled:cursor-wait disabled:opacity-60"
         >
           {busy ? "Харьцуулж байна…" : "Харьцуулалт үүсгэх"}
         </button>
@@ -142,7 +142,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[15px] font-bold text-parliament-900">{label}</span>
+      <span className="text-[15px] font-bold text-ink-950">{label}</span>
       {hint ? (
         <span className="text-[13.5px] leading-relaxed text-ink-600">{hint}</span>
       ) : null}

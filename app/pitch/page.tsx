@@ -96,7 +96,7 @@ export default function PitchPage() {
   const s = slides[i];
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden bg-parliament-950 text-white">
+    <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden bg-ink-950 text-white">
       <div
         className="pointer-events-none absolute inset-0 opacity-70"
         style={{
@@ -107,8 +107,8 @@ export default function PitchPage() {
       />
       <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-[1200px] flex-col px-8 py-12">
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-400">
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-gold-400 text-parliament-950">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-point-400">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-point-400 text-ink-950">
               P
             </span>
             Parlagmatic · Пич
@@ -119,7 +119,7 @@ export default function PitchPage() {
         </header>
 
         <div key={i} className="flex flex-1 flex-col justify-center animate-rise">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.25em] text-gold-400">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.25em] text-point-400">
             {s.eyebrow}
           </div>
           <h1 className="mt-3 max-w-4xl text-4xl font-bold leading-tight md:text-5xl">
@@ -144,7 +144,7 @@ export default function PitchPage() {
                 onClick={() => setI(idx)}
                 className={cn(
                   "h-1.5 rounded-full transition-all",
-                  idx === i ? "w-8 bg-gold-400" : "w-2 bg-white/25 hover:bg-white/40",
+                  idx === i ? "w-8 bg-point-400" : "w-2 bg-white/25 hover:bg-white/40",
                 )}
                 aria-label={`Слайд ${idx + 1}`}
               />
@@ -167,7 +167,7 @@ export default function PitchPage() {
 function Big({ value, label }: { value: string; label: string }) {
   return (
     <div className="rounded-2xl bg-white/[0.06] p-5 ring-1 ring-white/10">
-      <div className="text-4xl font-bold text-gold-400">{value}</div>
+      <div className="text-4xl font-bold text-point-400">{value}</div>
       <div className="mt-1 text-[13px] text-white/75">{label}</div>
     </div>
   );
@@ -176,7 +176,7 @@ function Big({ value, label }: { value: string; label: string }) {
 function DemoStep({ n, label }: { n: number; label: string }) {
   return (
     <div className="flex items-center gap-3 rounded-xl bg-white/[0.06] px-4 py-3 ring-1 ring-white/10">
-      <span className="grid h-7 w-7 place-items-center rounded-full bg-gold-400 text-[12px] font-bold text-parliament-950">
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-point-400 text-[12px] font-bold text-ink-950">
         {n}
       </span>
       <span className="font-mono text-[12.5px] text-white/90">{label}</span>
@@ -187,7 +187,7 @@ function DemoStep({ n, label }: { n: number; label: string }) {
 function Layer({ title, body }: { title: string; body: string }) {
   return (
     <div className="rounded-2xl bg-white/[0.06] p-5 ring-1 ring-white/10">
-      <div className="text-lg font-bold text-gold-400">{title}</div>
+      <div className="text-lg font-bold text-point-400">{title}</div>
       <p className="mt-1 text-[13px] leading-relaxed text-white/80">{body}</p>
     </div>
   );

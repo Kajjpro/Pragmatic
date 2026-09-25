@@ -58,28 +58,6 @@
   --color-ink-100: #eff1f6;
   --color-ink-50: #f7f8fc;
 
-  /* ── /staff (хөдөлгүүр) хэсгийн албан ёсны палитр ──
-     Иргэний апп violet, ажилтны самбар парламентын хөх хэвээр.
-     Dev 1-ийн ажлын ширээг эвдэхгүйн тулд хэвээр үлдээв. */
-  --color-parliament-950: #0a1836;
-  --color-parliament-900: #0f2350;
-  --color-parliament-850: #14306b;
-  --color-parliament-800: #1a3e88;
-  --color-parliament-700: #1c4392;
-  --color-parliament-600: #2f5db2;
-  --color-parliament-500: #4c7bd4;
-  --color-parliament-400: #7ea4e0;
-  --color-parliament-300: #a8c2ea;
-  --color-parliament-200: #cdddf5;
-  --color-parliament-100: #dfe6f5;
-  --color-parliament-50: #eff3fb;
-  --color-gold-700: #8a6a00;
-  --color-gold-500: #cc9d00;
-  --color-gold-400: #ffc607;
-  --color-gold-300: #ffd54a;
-  --color-gold-200: #ffe9a3;
-  --color-gold-100: #fff2c4;
-
   /* ── Үсгийн фонт — Manrope (кирилл дэмждэг) ── */
   --font-sans: var(--font-manrope), -apple-system, BlinkMacSystemFont,
     "Helvetica Neue", Arial, system-ui, sans-serif;
@@ -149,23 +127,6 @@ body {
     linear-gradient(168deg, #3b1178 0%, #2e1065 56%, #1d0a45 100%);
 }
 
-/* /staff хэсгийн парламентын хөх градиентууд */
-.chrome-navy {
-  background-image:
-    radial-gradient(ellipse 70% 140% at 12% 0%, rgba(47, 93, 178, 0.38), transparent 62%),
-    linear-gradient(176deg, #14306b 0%, #0f2350 48%, #0a1836 100%);
-}
-.chrome-hero {
-  background-image:
-    radial-gradient(ellipse 52% 46% at 82% 12%, rgba(255, 198, 7, 0.16), transparent 68%),
-    radial-gradient(ellipse 65% 90% at 8% 100%, rgba(47, 93, 178, 0.32), transparent 62%),
-    linear-gradient(168deg, #14306b 0%, #0a1836 58%, #081228 100%);
-}
-.chrome-footer {
-  background-image:
-    radial-gradient(ellipse 60% 100% at 85% 0%, rgba(47, 93, 178, 0.22), transparent 65%),
-    linear-gradient(180deg, #0a1836 0%, #081228 100%);
-}
 
 /* Бараан хэсэгт нарийн ширхэг нэмж хавтгай байдлыг арилгана */
 .grain {
@@ -203,22 +164,6 @@ body {
     color 0.15s ease;
 }
 .press:active { transform: translateY(1px) scale(0.985); }
-
-.nav-underline::after {
-  content: "";
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 0;
-  height: 2px;
-  border-radius: 999px;
-  background: var(--color-gold-400);
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.nav-underline:hover::after,
-.nav-underline[data-active="true"]::after { transform: scaleX(1); }
 
 /* Skeleton — ачаалж буй төлөв */
 .skeleton {
