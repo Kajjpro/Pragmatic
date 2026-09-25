@@ -1,1 +1,94 @@
 @import "tailwindcss";
+
+@theme {
+  /* built around brand primaries: parliament #1c4392 · gold #ffc607 */
+  --color-parliament-950: #0f2350;
+  --color-parliament-900: #163373;
+  --color-parliament-800: #1a3e88;
+  --color-parliament-700: #1c4392;
+  --color-parliament-600: #2f5db2;
+  --color-parliament-500: #4c7bd4;
+  --color-parliament-400: #7ea4e0;
+  --color-parliament-100: #dfe6f5;
+  --color-parliament-50: #eff3fb;
+
+  --color-gold-500: #cc9d00;
+  --color-gold-400: #ffc607;
+  --color-gold-300: #ffd54a;
+  --color-gold-100: #fff2c4;
+
+  --color-ink-900: #0b1220;
+  --color-ink-700: #33415c;
+  --color-ink-500: #6b7692;
+  --color-ink-300: #c1c8d6;
+  --color-ink-100: #eef1f6;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "SF Pro Display", "SF Pro", "Helvetica Neue", Arial, system-ui,
+    sans-serif;
+
+  --font-display: var(--font-geist-sans);
+  --font-editorial: var(--font-serif);
+
+  --animate-fade-in: fade-in 0.4s ease-out both;
+  --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+html, body {
+  background: #ffffff;
+  color: var(--color-ink-900);
+}
+
+::selection {
+  background: var(--color-parliament-100);
+  color: var(--color-parliament-900);
+}
+
+/* film-grain overlay for broadsheet feel */
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* single warm ambient glow — quiet, not "aurora" */
+.warm-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    ellipse 45% 40% at 78% 18%,
+    rgba(255, 198, 7, 0.12),
+    transparent 70%
+  );
+}
+
+.font-editorial {
+  font-family: var(--font-editorial), Georgia, "Times New Roman", serif;
+  font-feature-settings: "liga", "onum";
+}
+
+/* subtle scrollbar for sidebar lists */
+.scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+.scroll-slim::-webkit-scrollbar { width: 6px; }
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+}
+.scroll-slim::-webkit-scrollbar-track { background: transparent; }
