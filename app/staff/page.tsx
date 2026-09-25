@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getBillList } from "@/lib/law/queries";
 import { stageLabels } from "@/lib/labels";
 import { StatusPill } from "@/components/ui/status-pill";
+import { BillStatusBadge } from "@/components/bill/bill-status";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export default async function StaffPage() {
@@ -12,16 +13,16 @@ export default async function StaffPage() {
     <div className="flex flex-col gap-8">
       <section className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-editorial text-2xl font-medium text-parliament-900">
+          <h1 className="font-editorial text-[28px] font-bold text-parliament-900 sm:text-[32px]">
             Миний төслүүд
           </h1>
-          <p className="mt-1 text-[13px] text-ink-500">
+          <p className="mt-1 text-[14.5px] leading-relaxed text-ink-700">
             Хуулийн харьцуулалт, иргэдийн саналыг эндээс шалгана.
           </p>
         </div>
         <Link
           href="/staff/bills/new"
-          className="inline-flex items-center gap-2 rounded-full bg-parliament-700 px-4 py-2 text-[12.5px] font-semibold text-white transition hover:bg-parliament-800"
+          className="press inline-flex min-h-12 items-center gap-2 rounded-full bg-gold-400 px-5 text-[15px] font-bold text-parliament-950 shadow-[0_8px_24px_-8px_rgba(255,198,7,0.6)] hover:bg-gold-300"
         >
           <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
             <path
@@ -43,9 +44,10 @@ export default async function StaffPage() {
             <Link
               key={b.id}
               href={`/staff/bills/${b.id}`}
-              className="group flex flex-col gap-3 rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_20px_45px_-30px_rgba(15,42,99,0.3)] transition hover:-translate-y-0.5 hover:border-parliament-200"
+              className="card-lift group flex flex-col gap-3 rounded-2xl border border-ink-200 bg-white p-5 shadow-[0_20px_45px_-30px_rgba(15,42,99,0.3)] hover:border-parliament-300 hover:shadow-[0_28px_60px_-30px_rgba(15,42,99,0.5)]"
             >
               <div className="flex flex-wrap items-center gap-2">
+                <BillStatusBadge stage={b.stage} />
                 <StatusPill tone="info">{stageLabels[b.stage]}</StatusPill>
                 {b.unapprovedCount > 0 ? (
                   <StatusPill tone="warn">
@@ -59,12 +61,12 @@ export default async function StaffPage() {
                 ) : null}
               </div>
 
-              <h3 className="font-editorial text-[16px] font-medium leading-snug text-parliament-900 group-hover:text-parliament-700">
+              <h3 className="font-editorial text-[19px] font-bold leading-snug text-parliament-900 transition-colors group-hover:text-parliament-700">
                 {b.title}
               </h3>
 
               {/* Тоон үзүүлэлтүүд */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-ink-100 pt-3 text-[12px] text-ink-500 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-ink-100 pt-3 text-[13px] text-ink-600 sm:grid-cols-3">
                 <Count label="өөрчлөгдсөн заалт" value={b.changedCount} />
                 <Count label="батлаагүй" value={b.unapprovedCount} />
                 <Count label="иргэний санал" value={b.commentCount} />
@@ -72,8 +74,8 @@ export default async function StaffPage() {
                 <Count label="шүүгдсэн санал" value={b.filteredCount} />
               </div>
 
-              <span className="text-right text-[12px] font-semibold text-parliament-700 group-hover:text-parliament-900">
-                Ажлын ширээ нээх →
+              <span className="inline-flex items-center justify-end gap-1 text-[14px] font-bold text-parliament-700 transition-transform group-hover:translate-x-0.5 group-hover:text-parliament-900">
+                Ажлын ширээ нээх <span aria-hidden>→</span>
               </span>
             </Link>
           ))}
@@ -87,7 +89,7 @@ export default async function StaffPage() {
 function Count({ label, value }: { label: string; value: number }) {
   return (
     <span>
-      <b className="text-parliament-700">{value}</b> {label}
+      <b className="tabular-nums text-parliament-700">{value}</b> {label}
     </span>
   );
 }

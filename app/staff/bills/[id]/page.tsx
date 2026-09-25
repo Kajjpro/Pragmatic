@@ -1,25 +1,30 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getMockBill } from "@/lib/mock";
+import { getBillView } from "@/lib/law/queries";
 import { BillWorkbench } from "@/components/staff/bill-workbench";
 
-// Хараахан Dev 1-ийн /api/bills/[id] бэлэн биш тул mock-с уншиж байна.
-// ID нь MOCK_BILL_ID байвал mock; өөр ID ирвэл 404. Бэлэн болмогц Prisma-руу шилжинэ.
+// Ажилтны ажлын ширээ — бодит өгөгдлөөр (өмнө нь mock уншдаг байсан).
+// staff = true тул батлагдаагүй заалт, шүүгдсэн санал бүгд харагдана.
 export default async function StaffBillPage({
   params,
 }: PageProps<"/staff/bills/[id]">) {
   const { id } = await params;
-  const bill = getMockBill(id);
+  const bill = await getBillView(id, true);
   if (!bill) notFound();
 
   return (
     <div className="flex flex-col gap-5">
-      <nav className="flex items-center gap-2 text-[12px] text-ink-500">
-        <Link href="/staff" className="hover:text-parliament-700">
+      <nav className="flex flex-wrap items-center gap-2 text-[13px] text-ink-600">
+        <Link
+          href="/staff"
+          className="rounded transition-colors hover:text-parliament-700"
+        >
           Ажлын самбар
         </Link>
-        <span>/</span>
-        <span className="text-parliament-900">{bill.title}</span>
+        <span aria-hidden className="text-ink-300">
+          /
+        </span>
+        <span className="font-medium text-parliament-900">{bill.title}</span>
       </nav>
       <BillWorkbench bill={bill} />
     </div>
