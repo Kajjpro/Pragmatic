@@ -46,7 +46,7 @@ async function reveal(code: string) {
 
 async function main() {
   if (command === "list") return list();
-  if (command === "sync") return console.log(await syncVoteEvents());
+  if (command === "sync") return console.log(await syncVoteEvents(undefined, undefined, { discover: true }));
   if (command === "reveal" && agendaCode) return reveal(agendaCode);
   console.log("Хэрэглээ: npm run vote -- list | sync | reveal <agendaCode>");
   process.exitCode = 1;
