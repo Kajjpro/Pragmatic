@@ -3,7 +3,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as parliament from "@/lib/parliament";
-import type { AgendaVote } from "@/lib/parliament";
+import type { Agenda, AgendaVote } from "@/lib/parliament";
 import type { VoteCounts } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 
@@ -48,6 +48,19 @@ export function readVoteHooks(dataDir = "data"): VoteHook[] {
 
 // ───────────── Sync ─────────────
 
+const DISCOVER_LIMIT = 8; // hook-гүй хэдэн асуудлыг автоматаар шалгах вэ
+const DEFAULT_HOOK = "УИХ энэ асуудлыг дэмжих үү?"; // төвийг сахисан, AI-гүй асуулт
+
+// Бидний жагсаалтад байхгүй хамгийн сүүлийн асуудлууд (agendaCode = он + дугаар тул томоор нь эрэмбэлнэ)
+function discoverAgendas(agendas: Agenda[], known: string[]): Set<string> {
+  const knownSet = new Set(known);
+  const newest = agendas
+    .filter((a) => !knownSet.has(a.agendaCode))
+    .sort((a, b) => b.agendaCode.localeCompare(a.agendaCode))
+    .slice(0, DISCOVER_LIMIT);
+  return new Set(newest.map((a) => a.agendaCode));
+}
+
 export type SyncReport = {
   checked: number;
   created: number;
@@ -59,9 +72,12 @@ export type SyncReport = {
 // Бидний сонирхсон хэлэлцэх асуудал бүрийн санал хураалтыг ParliamentAPI-аас татаж VoteEvent-д хадгална.
 // Эцсийн хэлэлцүүлгийн санал хураалт болсон бол isReplay = true, тоо нь hidden* талбарт reveal хүртэл нууц.
 // ParliamentAPI огт холбогдохгүй бол ParliamentApiError шиднэ (route → 503).
+// discover: true бол hook бэлдээгүй ч ParliamentAPI-ийн хамгийн сүүлийн, санал хураалт болсон асуудлуудыг
+// энгийн асуулттай нэмнэ — Dev 2-ийн жагсаалт хоосон үед ч "Таамаг" хуудас хоосон үлдэхгүй.
 export async function syncVoteEvents(
   client: ParliamentClient = parliament,
   hooks: VoteHook[] = readVoteHooks(),
+  options: { discover?: boolean } = {},
 ): Promise<SyncReport> {
   const report: SyncReport = { checked: 0, created: 0, updated: 0, replays: 0, skipped: [] };
 
@@ -79,14 +95,19 @@ export async function syncVoteEvents(
   // 2. ParliamentAPI-д байгаа асуудлууд (энд унавал бүхэлдээ зогсоно)
   const agendas = await client.getAgendaList();
   const agendaByCode = new Map(agendas.map((a) => [a.agendaCode, a]));
+  const discovered = options.discover ? discoverAgendas(agendas, codes) : new Set<string>();
+  codes.push(...discovered);
 
   // 3. Асуудал бүрийн санал хураалт
   for (const agendaCode of codes) {
     report.checked++;
-    const hook = hookByCode.get(agendaCode);
+    const agenda = agendaByCode.get(agendaCode);
+    const hook =
+      hookByCode.get(agendaCode) ??
+      (discovered.has(agendaCode) && agenda ? { agendaCode, title: agenda.title, hook: DEFAULT_HOOK } : undefined);
     const project = projectByCode.get(agendaCode);
 
-    if (!agendaByCode.has(agendaCode)) {
+    if (!agenda) {
       report.skipped.push({ agendaCode, reason: "ParliamentAPI-д ийм хэлэлцэх асуудал алга" });
       continue;
     }
@@ -100,6 +121,11 @@ export async function syncVoteEvents(
       votes = await client.getAgendaVoteList(agendaCode);
     } catch (e) {
       report.skipped.push({ agendaCode, reason: e instanceof Error ? e.message : "санал хураалт татаж чадсангүй" });
+      continue;
+    }
+    // Шинээр олсон асуудал санал хураалтгүй бол таамаглах зүйл алга
+    if (discovered.has(agendaCode) && votes.length === 0) {
+      report.skipped.push({ agendaCode, reason: "санал хураалт хараахан болоогүй" });
       continue;
     }
     const final = parliament.finalReadingVote(votes);

@@ -146,6 +146,33 @@ test("reveal: replay-ийн нууц тоогоор бүх таамгийг нэ
   assert.ok(s.skipped.some((x) => x.agendaCode === "A1" && /аль хэдийн/.test(x.reason)));
 });
 
+test("sync discover: hook-гүй ч ParliamentAPI-ийн сүүлийн, санал хураалттай асуудлыг энгийн асуулттай нэмнэ", { skip }, async () => {
+  const client = {
+    async getAgendaList() {
+      return [
+        { agendaCode: "A1", title: "Нэг" },
+        { agendaCode: "20250200075", title: "Шинэ хууль" },
+        { agendaCode: "20250200076", title: "Санал хураагаагүй" },
+      ];
+    },
+    async getAgendaVoteList(code: string) {
+      if (code === "20250200075") return [vote(50, 10, true)];
+      if (code === "A1") return [vote(70, 10, true)];
+      return [];
+    },
+  };
+  // discover-гүй бол hook-гүй асуудал нэмэгдэхгүй
+  await voteEvents.syncVoteEvents(client, []);
+  assert.equal(await prisma.voteEvent.count({ where: { agendaCode: "20250200075" } }), 0);
+
+  const r = await voteEvents.syncVoteEvents(client, [], { discover: true });
+  assert.ok(r.skipped.some((x) => x.agendaCode === "20250200076" && /болоогүй/.test(x.reason)));
+  const found = await prisma.voteEvent.findUniqueOrThrow({ where: { agendaCode: "20250200075" } });
+  assert.deepEqual([found.title, found.hook, found.isReplay, found.hiddenSupport], ["Шинэ хууль", "УИХ энэ асуудлыг дэмжих үү?", true, 50]);
+  assert.equal(await prisma.voteEvent.count({ where: { agendaCode: "20250200076" } }), 0);
+  await prisma.voteEvent.delete({ where: { agendaCode: "20250200075" } });
+});
+
 test("reveal: replay биш бол ParliamentAPI-аас; эцсийн санал хураалт болоогүй бол хүлээнэ", { skip }, async () => {
   const a2 = await prisma.voteEvent.findUniqueOrThrow({ where: { agendaCode: "A2" } });
   assert.deepEqual(await voteEvents.findRevealCounts(a2.id, fakeClient), { status: "NOT_VOTED_YET" });
