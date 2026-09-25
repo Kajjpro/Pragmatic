@@ -60,6 +60,33 @@ enum FilterStatus {
   DUPLICATE
 }
 
+// Хэрэглэгчийн төрөл — карт хэнд зориулсныг заана. ALL = бүгдэд
+enum Persona {
+  STUDENT
+  DRIVER
+  WORKER
+  PARENT
+  ALL
+}
+
+// OPEN = таамаг авч байна, REVEALED = дүн гарсан
+enum VoteEventStatus {
+  OPEN
+  REVEALED
+}
+
+// BILL = бүтэн төсөл, CHANGE = нэг заалтын өөрчлөлт
+enum CardKind {
+  BILL
+  CHANGE
+}
+
+enum BadgeType {
+  STREAK_7
+  FIRST_PREDICTION
+  LAW_CHANGER
+}
+
 model User {
   id              String         @id @default(cuid())
   clerkId         String         @unique
@@ -67,9 +94,17 @@ model User {
   email           String?
   role            Role           @default(CITIZEN)
   committee       String?
+  persona         Persona        @default(ALL)
+  points          Int            @default(0)
+  streak          Int            @default(0)
+  lastActiveDate  DateTime?      @db.Date
   comments        Comment[]
   approvedReplies Reply[]        @relation("ApprovedBy")
   notifications   Notification[]
+  cardViews       CardView[]
+  quizAnswers     QuizAnswer[]
+  predictions     Prediction[]
+  badges          Badge[]
   createdAt       DateTime       @default(now())
 }
 
@@ -92,7 +127,10 @@ model Project {
   currentLawText String?
   amendmentText  String?
   reasonText     String?
+  agendaCode     String?       @unique
   clauses        Clause[]
+  cards          Card[]
+  voteEvents     VoteEvent[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 }
@@ -117,6 +155,7 @@ model Clause {
   order       Int
   comments    Comment[]
   clusters    Cluster[]
+  cards       Card[]
 
   @@index([projectId])
 }
@@ -156,6 +195,8 @@ model Comment {
   filterStatus   FilterStatus?
   filterReason   String?
   restored       Boolean       @default(false)
+  relevantPoints Boolean       @default(false)
+  badges         Badge[]
   createdAt      DateTime      @default(now())
 
   @@index([clauseId])
@@ -179,10 +220,141 @@ model Notification {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  replyId   String
-  reply     Reply     @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  text      String    @default("")
+  link      String?
+  replyId   String?
+  reply     Reply?    @relation(fields: [replyId], references: [id], onDelete: Cascade)
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
   @@unique([userId, replyId])
+  @@index([userId, createdAt])
+}
+
+// ───────────── Хариу v2: карт, асуулт, таамаг, тэмдэг ─────────────
+
+// 60 секундын хуулийн карт. Нэг карт = нэг төсөл (BILL) эсвэл нэг өөрчлөлт (CHANGE).
+// seed нь картын id-г өөрөө өгдөг (жишээ нь "card-overtime") тул дахин ажиллуулахад давхардахгүй.
+model Card {
+  id          String         @id @default(cuid())
+  projectId   String?
+  project     Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  clauseId    String?
+  clause      Clause?        @relation(fields: [clauseId], references: [id], onDelete: SetNull)
+  kind        CardKind
+  emoji       String
+  hook        String // ≤ 60 тэмдэгт
+  before      String? // "Одоо"
+  after       String? // "Болох нь"
+  youMeaning  String // "Чамд юу гэсэн үг вэ"
+  personas    Persona[]
+  sourceUrl   String
+  order       Int            @default(0)
+  publishedAt DateTime       @default(now())
+  questions   QuizQuestion[]
+  views       CardView[]
+
+  @@index([order, publishedAt])
+}
+
+model QuizQuestion {
+  id           String       @id @default(cuid())
+  cardId       String
+  card         Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  order        Int          @default(0)
+  question     String
+  options      Json // string[] — 3–4 сонголт
+  correctIndex Int
+  explanation  String
+  answers      QuizAnswer[]
+
+  @@index([cardId])
+}
+
+// Нэг хэрэглэгч нэг картыг өдөрт нэг л удаа "үзсэн" болно (+1 оноо)
+model CardView {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  day       DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@unique([userId, cardId, day])
+  @@index([cardId])
+}
+
+// Зөвхөн эхний хариулт хадгалагдана — оноо зөвхөн эхний оролдлогод
+model QuizAnswer {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionId  String
+  question    QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  chosenIndex Int
+  correct     Boolean
+  createdAt   DateTime     @default(now())
+
+  @@unique([userId, questionId])
+  @@index([questionId])
+}
+
+// УИХ-ын санал хураалт — иргэд үр дүнг таамаглана.
+// isReplay = санал хураалт аль хэдийн болсон; жинхэнэ тоо hidden* талбарт нуугдана, reveal хийхэд actual* руу шилжинэ.
+model VoteEvent {
+  id            String          @id @default(cuid())
+  agendaCode    String          @unique
+  projectId     String?
+  project       Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title         String
+  hook          String
+  status        VoteEventStatus @default(OPEN)
+  isReplay      Boolean         @default(false)
+  closesAt      DateTime?
+  hiddenSupport Int?
+  hiddenOppose  Int?
+  hiddenTotal   Int?
+  actualSupport Int?
+  actualOppose  Int?
+  actualTotal   Int?
+  passed        Boolean?
+  revealedAt    DateTime?
+  predictions   Prediction[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([status])
+}
+
+// Нэг хэрэглэгч нэг санал хураалтад нэг л таамаг. points нь дүн гарахад (reveal) бичигдэнэ.
+model Prediction {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voteEventId  String
+  voteEvent    VoteEvent @relation(fields: [voteEventId], references: [id], onDelete: Cascade)
+  willPass     Boolean
+  supportGuess Int
+  points       Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  @@unique([userId, voteEventId])
+  @@index([voteEventId])
+}
+
+// key нь тэмдэг давхардахгүй байх баталгаа:
+//   "STREAK_7:<userId>", "FIRST_PREDICTION:<userId>", "LAW_CHANGER:<submissionId>"
+// submissionId = иргэний санал (Comment). Хууль, заалтын нэрийг тэндээс уншина.
+model Badge {
+  id           String    @id @default(cuid())
+  key          String    @unique
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         BadgeType
+  submissionId String?
+  submission   Comment?  @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
 }
