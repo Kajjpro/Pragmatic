@@ -119,7 +119,7 @@ export default async function BillPage({
                     </div>
                   ) : (
                     <p className="mt-3 text-[13.5px] leading-relaxed text-ink-900">
-                      {clause.originalText}
+                      {clause.newText ?? clause.oldText}
                     </p>
                   )}
 
