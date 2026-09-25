@@ -3,11 +3,11 @@
 //   карт   → CardView (хэрэглэгч + карт + өдөр)
 //   асуулт → QuizAnswer (хэрэглэгч + асуулт)
 //   таамаг → Prediction (хэрэглэгч + санал хураалт)
-//   санал  → Comment.relevantPoints, Badge.key "LAW_CHANGER:<commentId>"
+//   санал  → Comment.relevantPoints, Badge.key "LAW_CHANGER:<submissionId>"
 // Тиймээс нэг хүсэлт хоёр удаа ирсэн ч оноо хоёр дахин нэмэгдэхгүй.
 import type { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import type { BadgeType, BadgeView, PredictionView } from "@/lib/types";
+import type { Badge, BadgeType, Prediction } from "@/lib/types";
 
 export const POINTS = {
   CARD_VIEW: 1, // карт үзэх — өдөрт нэг картад нэг удаа
@@ -90,38 +90,27 @@ export function scorePrediction(
 
 // ───────────── Тэмдэг ─────────────
 
-type BadgeRow = {
-  id: string;
-  type: BadgeType;
-  lawTitle: string | null;
-  clauseNumber: string | null;
-  createdAt: Date;
-};
-
-export function toBadgeView(b: BadgeRow): BadgeView {
+// DB-ийн тэмдэг → API-ийн Badge. LAW_CHANGER бол хууль, заалтын нэрийг саналаас авна.
+export function toBadge(
+  b: { id: string; type: BadgeType; createdAt: Date },
+  law: { lawTitle: string; clauseNumber: string } | null = null,
+): Badge {
   return {
     id: b.id,
     type: b.type,
-    lawTitle: b.lawTitle,
-    clauseNumber: b.clauseNumber,
     createdAt: b.createdAt.toISOString(),
+    lawTitle: law?.lawTitle ?? null,
+    clauseNumber: law?.clauseNumber ?? null,
   };
 }
 
 // Тэмдгийг нээнэ. key давхцвал (аль хэдийн авсан) юу ч үүсгэхгүй, null буцаана.
 async function unlockBadge(
   tx: Tx,
-  data: {
-    key: string;
-    userId: string;
-    type: BadgeType;
-    commentId?: string;
-    lawTitle?: string;
-    clauseNumber?: string;
-  },
-): Promise<BadgeView | null> {
+  data: { key: string; userId: string; type: BadgeType; submissionId?: string },
+): Promise<{ id: string; type: BadgeType; createdAt: Date } | null> {
   const created = await tx.badge.createManyAndReturn({ data: [data], skipDuplicates: true });
-  return created.length === 1 ? toBadgeView(created[0]) : null;
+  return created.length === 1 ? created[0] : null;
 }
 
 // ───────────── Оноо өгөх функцууд ─────────────
@@ -133,7 +122,7 @@ export async function awardCardView(userId: string, cardId: string) {
   return prisma.$transaction(async (tx) => {
     // 1. Өнөөдрийн үзэлтийг бичнэ. Аль хэдийн байвал count = 0 (оноо өгөхгүй).
     const inserted = await tx.cardView.createMany({
-      data: [{ userId, cardId, day: dayToDate(today), pointsAwarded: POINTS.CARD_VIEW }],
+      data: [{ userId, cardId, day: dayToDate(today) }],
       skipDuplicates: true,
     });
     const pointsAwarded = inserted.count === 1 ? POINTS.CARD_VIEW : 0;
@@ -158,10 +147,10 @@ export async function awardCardView(userId: string, cardId: string) {
     });
 
     // 4. 7 хоног дараалсан бол тэмдэг
-    const newBadges: BadgeView[] = [];
+    const newBadges: Badge[] = [];
     if (streak >= STREAK_BADGE_DAYS) {
       const badge = await unlockBadge(tx, { key: `STREAK_7:${userId}`, userId, type: "STREAK_7" });
-      if (badge) newBadges.push(badge);
+      if (badge) newBadges.push(toBadge(badge));
     }
 
     return { points: user.points, streak: user.streak, pointsAwarded, newBadges };
@@ -182,7 +171,7 @@ export async function awardQuizAnswer(userId: string, questionId: string, chosen
 
     // Эхний хариулт л бичигдэнэ. Дахин хариулбал count = 0.
     const inserted = await tx.quizAnswer.createMany({
-      data: [{ userId, questionId, chosenIndex, correct, pointsAwarded: correct ? POINTS.QUIZ_CORRECT : 0 }],
+      data: [{ userId, questionId, chosenIndex, correct }],
       skipDuplicates: true,
     });
     const firstTry = inserted.count === 1;
@@ -208,7 +197,7 @@ export async function awardQuizAnswer(userId: string, questionId: string, chosen
 // Таамаг хадгална (нэг хэрэглэгч нэг санал хураалтад нэг л удаа).
 // Анхны таамаг бол FIRST_PREDICTION тэмдэг нээнэ. Оноог reveal хийхэд scorePrediction-оор өгнө.
 export type SavePredictionResult =
-  | { status: "OK"; prediction: PredictionView; newBadges: BadgeView[] }
+  | { status: "OK"; prediction: Prediction; newBadges: Badge[] }
   | { status: "NOT_FOUND" | "CLOSED" | "ALREADY" };
 
 export async function savePrediction(
@@ -229,9 +218,9 @@ export async function savePrediction(
     if (created.length === 0) return { status: "ALREADY" as const };
 
     const p = created[0];
-    const newBadges: BadgeView[] = [];
+    const newBadges: Badge[] = [];
     const badge = await unlockBadge(tx, { key: `FIRST_PREDICTION:${userId}`, userId, type: "FIRST_PREDICTION" });
-    if (badge) newBadges.push(badge);
+    if (badge) newBadges.push(toBadge(badge));
 
     return {
       status: "OK" as const,
@@ -240,7 +229,7 @@ export async function savePrediction(
         voteEventId: p.voteEventId,
         willPass: p.willPass,
         supportGuess: p.supportGuess,
-        pointsAwarded: p.pointsAwarded,
+        points: p.points,
         createdAt: p.createdAt.toISOString(),
       },
       newBadges,
@@ -267,33 +256,37 @@ export async function awardRelevantComment(userId: string, commentId: string): P
 }
 
 // Санал хуульд тусгагдсан: +50, LAW_CHANGER тэмдэг, мэдэгдэл. Нэг саналд нэг л удаа.
-export async function awardReflected(userId: string, commentId: string) {
+// submissionId = иргэний саналын (Comment) id.
+export async function awardReflected(userId: string, submissionId: string) {
   return prisma.$transaction(async (tx) => {
-    const comment = await tx.comment.findUnique({
-      where: { id: commentId },
+    const submission = await tx.comment.findUnique({
+      where: { id: submissionId },
       select: {
         userId: true,
         clause: { select: { number: true, project: { select: { title: true } } } },
       },
     });
-    if (!comment || comment.userId !== userId) return { pointsAwarded: 0, badge: null };
+    if (!submission || submission.userId !== userId) return { pointsAwarded: 0, badge: null };
 
-    const badge = await unlockBadge(tx, {
-      key: `LAW_CHANGER:${commentId}`,
+    const created = await unlockBadge(tx, {
+      key: `LAW_CHANGER:${submissionId}`,
       userId,
       type: "LAW_CHANGER",
-      commentId,
-      lawTitle: comment.clause.project.title,
-      clauseNumber: comment.clause.number,
+      submissionId,
     });
-    if (!badge) return { pointsAwarded: 0, badge: null }; // аль хэдийн өгсөн
+    if (!created) return { pointsAwarded: 0, badge: null }; // аль хэдийн өгсөн
 
     await tx.user.update({
       where: { id: userId },
       data: { points: { increment: POINTS.REFLECTED } },
     });
     await tx.notification.create({
-      data: { userId, text: "✅ Таны санал хуульд тусгагдлаа", link: `/b/${badge.id}` },
+      data: { userId, text: "✅ Таны санал хуульд тусгагдлаа", link: `/b/${created.id}` },
+    });
+
+    const badge = toBadge(created, {
+      lawTitle: submission.clause.project.title,
+      clauseNumber: submission.clause.number,
     });
     return { pointsAwarded: POINTS.REFLECTED, badge };
   });

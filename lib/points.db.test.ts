@@ -47,7 +47,6 @@ const s = {
   q2: "",
   openEvent: "",
   openEvent2: "",
-  draftEvent: "",
   revealedEvent: "",
   billId: "",
   clauseId: "",
@@ -91,37 +90,40 @@ before(async () => {
   s.billId = bill.id;
   s.clauseId = bill.clauses[0].id;
 
-  const card = (slug: string, order: number, personas: ("STUDENT" | "DRIVER" | "ALL")[]) =>
+  // seed шиг картын id-г өөрөө өгнө
+  const card = (id: string, order: number, personas: ("STUDENT" | "DRIVER" | "ALL")[]) =>
     prisma.card.create({
       data: {
-        slug,
-        title: slug,
+        id,
+        kind: "CHANGE",
+        emoji: "⏰",
         hook: "дэгээ",
-        body: "тайлбар",
+        before: "одоо",
+        after: "болох нь",
+        youMeaning: "чамд юу гэсэн үг",
         personas,
+        sourceUrl: "https://lawforum.parliament.mn",
         order,
         projectId: bill.id,
+        clauseId: bill.clauses[0].id,
         questions: {
           create: [
-            { order: 0, question: "Асуулт 1?", options: ["А", "Б", "В"], correctIndex: 1, explanation: "Учир нь Б" },
-            { order: 1, question: "Асуулт 2?", options: ["Тийм", "Үгүй"], correctIndex: 0, explanation: "Тийм" },
+            { id: `${id}-q1`, order: 0, question: "Асуулт 1?", options: ["А", "Б", "В"], correctIndex: 1, explanation: "Учир нь Б" },
+            { id: `${id}-q2`, order: 1, question: "Асуулт 2?", options: ["Тийм", "Үгүй"], correctIndex: 0, explanation: "Тийм" },
           ],
         },
       },
-      include: { questions: { orderBy: { order: "asc" } } },
     });
-  const student = await card("student", 2, ["STUDENT"]);
-  s.cardStudent = student.id;
-  s.q1 = student.questions[0].id;
-  s.q2 = student.questions[1].id;
-  s.cardDriver = (await card("driver", 1, ["DRIVER"])).id;
-  s.cardAll = (await card("all", 3, ["ALL"])).id;
+  s.cardStudent = (await card("card-student", 2, ["STUDENT"])).id;
+  s.q1 = "card-student-q1";
+  s.q2 = "card-student-q2";
+  s.cardDriver = (await card("card-driver", 1, ["DRIVER"])).id;
+  s.cardAll = (await card("card-all", 3, ["ALL"])).id;
 
-  const event = (agendaCode: string, status: "DRAFT" | "OPEN" | "REVEALED", extra = {}) =>
+  const event = (agendaCode: string, status: "OPEN" | "REVEALED", extra = {}) =>
     prisma.voteEvent.create({ data: { agendaCode, title: agendaCode, hook: "Батлагдах уу?", status, ...extra } });
   s.openEvent = (await event("A1", "OPEN", { isReplay: true, hiddenSupport: 70, hiddenOppose: 10, hiddenTotal: 80 })).id;
   s.openEvent2 = (await event("A2", "OPEN")).id;
-  s.draftEvent = (await event("A3", "DRAFT")).id;
   s.revealedEvent = (
     await event("A4", "REVEALED", {
       actualSupport: 60,
@@ -209,7 +211,7 @@ test("prediction: only while OPEN, one per user, FIRST_PREDICTION once", { skip 
   assert.equal(first.status, "OK");
   if (first.status !== "OK") return;
   assert.equal(first.prediction.supportGuess, 65);
-  assert.equal(first.prediction.pointsAwarded, null);
+  assert.equal(first.prediction.points, 0);
   assert.deepEqual(first.newBadges.map((b) => b.type), ["FIRST_PREDICTION"]);
 
   assert.equal((await points.savePrediction(s.citizen, s.openEvent, false, 10)).status, "ALREADY");
@@ -218,7 +220,6 @@ test("prediction: only while OPEN, one per user, FIRST_PREDICTION once", { skip 
   assert.equal(second.status, "OK");
   if (second.status === "OK") assert.deepEqual(second.newBadges, []);
 
-  assert.equal((await points.savePrediction(s.citizen, s.draftEvent, true, 1)).status, "CLOSED");
   assert.equal((await points.savePrediction(s.citizen, s.revealedEvent, true, 1)).status, "CLOSED");
   assert.equal((await points.savePrediction(s.citizen, "no-such-event", true, 1)).status, "NOT_FOUND");
 });
@@ -246,9 +247,11 @@ test("reflected: +50, LAW_CHANGER badge and notification once, only for citizens
   assert.equal(await pointsOf(s.citizen), citizenBefore + 50);
   assert.equal(await pointsOf(s.staff), staffBefore);
 
-  const badge = await prisma.badge.findFirstOrThrow({ where: { userId: s.citizen, type: "LAW_CHANGER" } });
-  assert.equal(badge.lawTitle, "Замын хөдөлгөөний тухай хууль");
-  assert.equal(badge.clauseNumber, "3.1");
+  const badge = await prisma.badge.findFirstOrThrow({
+    where: { userId: s.citizen, type: "LAW_CHANGER" },
+    include: { submission: { select: { userId: true } } },
+  });
+  assert.equal(badge.submission?.userId, s.citizen);
 
   const notes = await prisma.notification.findMany({ where: { userId: s.citizen } });
   assert.equal(notes.length, 1);
@@ -260,32 +263,36 @@ test("reflected: +50, LAW_CHANGER badge and notification once, only for citizens
   assert.equal(await prisma.notification.count({ where: { userId: s.citizen } }), 1);
 });
 
-test("feed: persona filter, order, and no answers leaked", { skip }, async () => {
-  const slugs = async (p: "STUDENT" | "DRIVER" | "ALL") => (await feed.getFeed(p)).map((c) => c.slug);
-  assert.deepEqual(await slugs("ALL"), ["driver", "student", "all"]);
-  assert.deepEqual(await slugs("STUDENT"), ["student", "all"]);
-  assert.deepEqual(await slugs("DRIVER"), ["driver", "all"]);
+test("feed: persona filter, order, Dev 3's FeedCard shape, and no answers leaked", { skip }, async () => {
+  const ids = async (p: "STUDENT" | "DRIVER" | "ALL") => (await feed.getFeed(p)).map((c) => c.id);
+  assert.deepEqual(await ids("ALL"), ["card-driver", "card-student", "card-all"]);
+  assert.deepEqual(await ids("STUDENT"), ["card-student", "card-all"]);
+  assert.deepEqual(await ids("DRIVER"), ["card-driver", "card-all"]);
 
   const [card] = await feed.getFeed("STUDENT");
-  assert.equal(card.billId, s.billId);
-  assert.deepEqual(Object.keys(card.questions[0]).sort(), ["id", "options", "question"]);
+  assert.deepEqual(Object.keys(card).sort(), [
+    "after", "before", "clauseId", "emoji", "hook", "id", "kind", "order", "personas", "projectId", "quiz", "sourceUrl", "youMeaning",
+  ]);
+  assert.equal(card.projectId, s.billId);
+  assert.deepEqual(card.quiz[0], { id: "card-student-q1", question: "Асуулт 1?", options: ["А", "Б", "В"] });
   assert.ok(!JSON.stringify(card).includes("correctIndex"));
   assert.ok(!JSON.stringify(card).includes("Учир нь Б"));
 });
 
-test("vote events: only OPEN and REVEALED, real numbers only after reveal", { skip }, async () => {
+test("vote events: OPEN first, real numbers only after reveal, hidden numbers never", { skip }, async () => {
   const events = await feed.getVoteEvents();
-  assert.deepEqual(events.map((e) => e.agendaCode).sort(), ["A1", "A2", "A4"]);
+  assert.deepEqual(events.map((e) => e.title).sort(), ["A1", "A2", "A4"]);
   assert.deepEqual(events.map((e) => e.status), ["OPEN", "OPEN", "REVEALED"]);
 
-  const replay = events.find((e) => e.agendaCode === "A1")!;
+  const replay = events.find((e) => e.title === "A1")!;
   assert.equal(replay.isReplay, true);
-  assert.equal(replay.result, null);
+  assert.deepEqual([replay.actualSupport, replay.actualOppose, replay.actualTotal, replay.passed], [null, null, null, null]);
   assert.equal(replay.predictionCount, 1);
   assert.ok(!JSON.stringify(events).includes("hidden"));
+  assert.ok(!JSON.stringify(events).includes("70"));
 
-  const revealed = events.find((e) => e.agendaCode === "A4")!;
-  assert.deepEqual(revealed.result, { support: 60, oppose: 20, total: 80, passed: true });
+  const revealed = events.find((e) => e.title === "A4")!;
+  assert.deepEqual([revealed.actualSupport, revealed.actualOppose, revealed.actualTotal, revealed.passed], [60, 20, 80, true]);
 });
 
 test("public badge: first name only, never email", { skip }, async () => {
@@ -306,12 +313,16 @@ test("me: everything in one view", { skip }, async () => {
   assert.equal(view.streak, 1);
   assert.equal(view.activeToday, true);
   assert.deepEqual(view.badges.map((b) => b.type).sort(), ["FIRST_PREDICTION", "LAW_CHANGER"]);
-  assert.equal(view.predictions.length, 2);
-  assert.equal(view.predictions[0].event.title.startsWith("A"), true);
-  assert.equal(view.comments.length, 1);
-  assert.equal(view.comments[0].filterStatus, "RELEVANT");
-  assert.equal(view.comments[0].clause.billTitle, "Замын хөдөлгөөний тухай хууль");
-  assert.equal(view.notifications.length, 1);
-  assert.deepEqual(view.viewedCardIdsToday.sort(), [s.cardDriver, s.cardStudent].sort());
-  assert.equal(view.quizAnswers.length, 2);
+  assert.equal(view.persona, "ALL");
+  const law = view.badges.find((b) => b.type === "LAW_CHANGER")!;
+  assert.deepEqual([law.lawTitle, law.clauseNumber], ["Замын хөдөлгөөний тухай хууль", "3.1"]);
+  assert.equal(view.predictions!.length, 2);
+  assert.deepEqual(view.predictions!.map((p) => p.event.title).sort(), ["A1", "A2"]);
+  assert.equal(view.predictions![0].points, 0);
+  assert.equal(view.comments!.length, 1);
+  assert.equal(view.comments![0].filterStatus, "RELEVANT");
+  assert.equal(view.comments![0].clause.billTitle, "Замын хөдөлгөөний тухай хууль");
+  assert.equal(view.notifications!.length, 1);
+  assert.deepEqual(view.viewedCardIdsToday!.sort(), [s.cardDriver, s.cardStudent].sort());
+  assert.equal(view.quizAnswers!.length, 2);
 });

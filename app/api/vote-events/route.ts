@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { handleError } from "@/lib/auth";
 import { getVoteEvents } from "@/lib/feed";
 
-// Нэвтрэх шаардлагагүй. OPEN ба REVEALED санал хураалтууд; бодит тоо зөвхөн REVEALED үед.
+// Нэвтрэх шаардлагагүй. Бүх санал хураалт (OPEN, REVEALED); бодит тоо зөвхөн REVEALED үед.
 export async function GET() {
   try {
     const events = await getVoteEvents();

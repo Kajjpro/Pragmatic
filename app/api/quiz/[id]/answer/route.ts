@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUser, handleError, HttpError } from "@/lib/auth";
+import { toOptions } from "@/lib/feed";
 import { int, readBody } from "@/lib/law/http";
 import { awardQuizAnswer } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
@@ -18,16 +19,17 @@ export async function POST(req: Request, ctx: RouteContext<"/api/quiz/[id]/answe
     });
     if (!question) throw new HttpError(404, "Асуулт олдсонгүй");
 
-    const chosenIndex = int(body, "chosenIndex", { min: 0, max: question.options.length - 1 });
+    const optionCount = toOptions(question.options).length;
+    const chosenIndex = int(body, "chosenIndex", { min: 0, max: optionCount - 1 });
 
     const user = await getUser();
     if (!user) {
       const guest: QuizAnswerResult = {
-        saved: false,
         correct: chosenIndex === question.correctIndex,
         correctIndex: question.correctIndex,
         explanation: question.explanation,
         pointsAwarded: 0,
+        saved: false,
         points: null,
       };
       return NextResponse.json(guest);
@@ -37,11 +39,11 @@ export async function POST(req: Request, ctx: RouteContext<"/api/quiz/[id]/answe
     if (!r) throw new HttpError(404, "Асуулт олдсонгүй");
 
     const result: QuizAnswerResult = {
-      saved: true,
       correct: r.correct,
       correctIndex: r.correctIndex,
       explanation: r.explanation,
       pointsAwarded: r.pointsAwarded,
+      saved: true,
       points: r.points,
     };
     return NextResponse.json(result);

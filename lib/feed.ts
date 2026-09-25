@@ -1,10 +1,15 @@
 // Нэвтрээгүй хүн ч харах өгөгдөл: картууд, санал хураалтууд, тэмдгийн хуваалцах мэдээлэл.
 // AI хэзээ ч дуудахгүй — зөвхөн DB-ээс уншина.
 import { prisma } from "@/lib/prisma";
-import { PERSONAS, type FeedCard, type Persona, type PublicBadge, type VoteEventView } from "@/lib/types";
+import { PERSONAS, type FeedCard, type Persona, type PublicBadge, type VoteEvent } from "@/lib/types";
 
 export function isPersona(v: unknown): v is Persona {
   return typeof v === "string" && (PERSONAS as readonly string[]).includes(v);
+}
+
+// QuizQuestion.options нь Json багана — зөвхөн текстүүдийг үлдээнэ
+export function toOptions(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((o): o is string => typeof o === "string") : [];
 }
 
 // ───────────── Картууд ─────────────
@@ -20,15 +25,17 @@ export async function getFeed(persona: Persona): Promise<FeedCard[]> {
     orderBy: [{ order: "asc" }, { publishedAt: "desc" }],
     select: {
       id: true,
-      slug: true,
-      title: true,
+      kind: true,
+      emoji: true,
       hook: true,
-      body: true,
+      before: true,
+      after: true,
+      youMeaning: true,
       personas: true,
-      order: true,
-      publishedAt: true,
       sourceUrl: true,
+      order: true,
       projectId: true,
+      clauseId: true,
       questions: {
         orderBy: { order: "asc" },
         select: { id: true, question: true, options: true },
@@ -36,10 +43,9 @@ export async function getFeed(persona: Persona): Promise<FeedCard[]> {
     },
   });
 
-  return cards.map(({ projectId, publishedAt, ...c }) => ({
+  return cards.map(({ questions, ...c }) => ({
     ...c,
-    publishedAt: publishedAt.toISOString(),
-    billId: projectId,
+    quiz: questions.map((q) => ({ id: q.id, question: q.question, options: toOptions(q.options) })),
   }));
 }
 
@@ -48,12 +54,11 @@ export async function getFeed(persona: Persona): Promise<FeedCard[]> {
 // hidden* талбаруудыг хэзээ ч сонгохгүй — жинхэнэ тоо reveal хүртэл нууц.
 export const voteEventSelect = {
   id: true,
-  agendaCode: true,
   title: true,
   hook: true,
   status: true,
   isReplay: true,
-  voteDate: true,
+  closesAt: true,
   projectId: true,
   actualSupport: true,
   actualOppose: true,
@@ -65,12 +70,11 @@ export const voteEventSelect = {
 
 type VoteEventRow = {
   id: string;
-  agendaCode: string;
   title: string;
   hook: string;
-  status: VoteEventView["status"];
+  status: VoteEvent["status"];
   isReplay: boolean;
-  voteDate: Date | null;
+  closesAt: Date | null;
   projectId: string | null;
   actualSupport: number | null;
   actualOppose: number | null;
@@ -80,40 +84,33 @@ type VoteEventRow = {
   _count: { predictions: number };
 };
 
-export function toVoteEventView(e: VoteEventRow): VoteEventView {
+export function toVoteEvent(e: VoteEventRow): VoteEvent {
   // Бодит тоо зөвхөн REVEALED үед
-  const revealed =
-    e.status === "REVEALED" &&
-    e.actualSupport !== null &&
-    e.actualOppose !== null &&
-    e.actualTotal !== null &&
-    e.passed !== null;
-
+  const revealed = e.status === "REVEALED";
   return {
     id: e.id,
-    agendaCode: e.agendaCode,
     title: e.title,
     hook: e.hook,
-    status: e.status,
     isReplay: e.isReplay,
-    voteDate: e.voteDate ? e.voteDate.toISOString() : null,
-    billId: e.projectId,
+    status: e.status,
+    closesAt: e.closesAt ? e.closesAt.toISOString() : null,
+    actualSupport: revealed ? e.actualSupport : null,
+    actualOppose: revealed ? e.actualOppose : null,
+    actualTotal: revealed ? e.actualTotal : null,
+    passed: revealed ? e.passed : null,
+    projectId: e.projectId,
     predictionCount: e._count.predictions,
-    result: revealed
-      ? { support: e.actualSupport!, oppose: e.actualOppose!, total: e.actualTotal!, passed: e.passed! }
-      : null,
     revealedAt: revealed && e.revealedAt ? e.revealedAt.toISOString() : null,
   };
 }
 
 // Нээлттэй (OPEN) нь эхэнд, дараа нь дүн гарсан (REVEALED) — шинэ нь эхэнд
-export async function getVoteEvents(): Promise<VoteEventView[]> {
+export async function getVoteEvents(): Promise<VoteEvent[]> {
   const events = await prisma.voteEvent.findMany({
-    where: { status: { in: ["OPEN", "REVEALED"] } },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     select: voteEventSelect,
   });
-  return events.map(toVoteEventView);
+  return events.map(toVoteEvent);
 }
 
 // ───────────── Тэмдэг (хуваалцах хуудас) ─────────────
@@ -130,10 +127,9 @@ export async function getPublicBadge(id: string): Promise<PublicBadge | null> {
     select: {
       id: true,
       type: true,
-      lawTitle: true,
-      clauseNumber: true,
       createdAt: true,
       user: { select: { name: true } },
+      submission: { select: { clause: { select: { number: true, project: { select: { title: true } } } } } },
     },
   });
   if (!badge) return null;
@@ -142,8 +138,8 @@ export async function getPublicBadge(id: string): Promise<PublicBadge | null> {
     id: badge.id,
     type: badge.type,
     firstName: firstNameOf(badge.user.name),
-    lawTitle: badge.lawTitle,
-    clauseNumber: badge.clauseNumber,
+    lawTitle: badge.submission?.clause.project.title ?? null,
+    clauseNumber: badge.submission?.clause.number ?? null,
     date: badge.createdAt.toISOString(),
   };
 }

@@ -2,7 +2,7 @@
 //   npm run smoke                                   (http://localhost:3000)
 //   BASE_URL=https://hariu.vercel.app npm run smoke  (production)
 //   BADGE_ID=<id> npm run smoke                      (жинхэнэ тэмдгийг шалгах)
-import type { FeedCard, PublicBadge, VoteEventView } from "../lib/types";
+import type { FeedCard, PublicBadge, VoteEvent } from "../lib/types";
 
 const BASE = (process.env.BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
@@ -54,7 +54,7 @@ async function main() {
   const all = (await call("GET /api/feed", "/api/feed", 200, {
     describe: (j) => {
       const cards = j as FeedCard[];
-      const questions = cards.reduce((n, c) => n + c.questions.length, 0);
+      const questions = cards.reduce((n, c) => n + c.quiz.length, 0);
       const leaked = JSON.stringify(cards).includes("correctIndex") ? "  ⚠ correctIndex гарсан!" : "";
       return `${cards.length} карт, ${questions} асуулт${leaked}`;
     },
@@ -70,7 +70,7 @@ async function main() {
   // ── Санал хураалт ──
   await call("GET /api/vote-events", "/api/vote-events", 200, {
     describe: (j) => {
-      const events = j as VoteEventView[];
+      const events = j as VoteEvent[];
       const open = events.filter((e) => e.status === "OPEN").length;
       const revealed = events.filter((e) => e.status === "REVEALED").length;
       const replay = events.filter((e) => e.isReplay).length;
@@ -95,13 +95,13 @@ async function main() {
   await call("GET /api/bills", "/api/bills", 200, { describe: (j) => `${(j as unknown[]).length} төсөл` });
 
   // ── Зочин: карт үзэх, асуултад хариулах нь алдаа биш (saved: false) ──
-  const card = all?.find((c) => c.questions.length > 0) ?? all?.[0];
+  const card = all?.find((c) => c.quiz.length > 0) ?? all?.[0];
   if (card) {
     await call("POST /api/cards/[id]/view (зочин)", `/api/cards/${card.id}/view`, 200, {
       method: "POST",
       describe: (j) => `saved: ${(j as { saved: boolean }).saved}`,
     });
-    const q = card.questions[0];
+    const q = card.quiz[0];
     if (q) {
       await call("POST /api/quiz/[id]/answer (зочин)", `/api/quiz/${q.id}/answer`, 200, {
         method: "POST",

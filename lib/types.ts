@@ -1,5 +1,6 @@
-// Backend ↔ frontend гэрээ (Хариу v2).
-// Энд зөвхөн төрөл ба жижиг тогтмол байна — client компонентоос шууд import хийж болно.
+// Backend ↔ frontend гэрээ (Хариу v2) — CLAUDE.md-ийн "Data model" ба "API".
+// Dev 3-ийн түр lib/types.ts-ийн нэр, талбарууд ЯГ хэвээр. Dev 1-ийн нэмсэн талбар бүр `?` (заавал биш),
+// тиймээс lib/mock.ts-ийн объектууд өөрчлөлтгүй таарна.
 // Огноо бүр JSON-оор ISO текст ("2026-09-25T10:00:00.000Z") болж ирнэ.
 
 // ── Хуучин (v1) төрлүүд — хуулийн харьцуулалт, санал ──
@@ -16,69 +17,121 @@ export type { ChangeType, FilterStatus, Stage, WordPart } from "./law/types";
 import type { ReflectionValue } from "./law/queries";
 import type { ChangeType, FilterStatus, WordPart } from "./law/types";
 
-// ── Тогтмолууд ──
-export const PERSONAS = ["STUDENT", "DRIVER", "WORKER", "PARENT", "ALL"] as const;
-export type Persona = (typeof PERSONAS)[number]; // Сурагч/оюутан | Жолооч | Ажилтан | Эцэг эх | Бүгд
-
-export type VoteEventStatus = "DRAFT" | "OPEN" | "REVEALED";
-export type BadgeType = "STREAK_7" | "FIRST_PREDICTION" | "LAW_CHANGER";
-
-export const MAX_SUPPORT_GUESS = 126; // УИХ-ын гишүүдийн тоо
-
 export type ApiError = { error: string }; // алдаа бүр ийм хэлбэртэй, монголоор
 
-// ── GET /api/feed?persona=STUDENT|DRIVER|WORKER|PARENT|ALL ──
-// Хариулт: FeedCard[]  (асуултын зөв хариу, тайлбар ЭНД БАЙХГҮЙ)
+// ── Хэрэглэгчийн бүлэг: «Би хэн бэ?» ──
+export const PERSONAS = ["STUDENT", "DRIVER", "WORKER", "PARENT", "ALL"] as const;
+export type Persona = (typeof PERSONAS)[number];
+
+export const personaLabels: Record<Persona, string> = {
+  STUDENT: "Сурагч",
+  DRIVER: "Жолооч",
+  WORKER: "Ажил хийдэг",
+  PARENT: "Эцэг эх",
+  ALL: "Бүгд",
+};
+
+// ── ① Өнөөдрийн хууль — 60 секундийн карт ──
+export type CardKind = "BILL" | "CHANGE"; // бүтэн төсөл | нэг заалтын өөрчлөлт
+
+// Викторины асуулт. correctIndex, explanation-ийг ЭНД ХЭЗЭЭ Ч явуулахгүй.
 export type QuizQuestionView = {
   id: string;
   question: string;
-  options: string[];
+  options: string[]; // 3–4 сонголт
 };
 
+// GET /api/feed?persona=STUDENT|DRIVER|WORKER|PARENT|ALL → FeedCard[]
 export type FeedCard = {
   id: string;
-  slug: string;
-  title: string;
-  hook: string; // нэг өгүүлбэрийн "дэгээ"
-  body: string; // 60 секундын тайлбар
+  kind: CardKind;
+  emoji: string;
+  hook: string; // ≤ 60 тэмдэгт
+  before: string | null; // "Одоо"
+  after: string | null; // "Болох нь"
+  youMeaning: string; // "Чамд юу гэсэн үг вэ"
   personas: Persona[];
+  sourceUrl: string;
   order: number;
-  publishedAt: string;
-  sourceUrl: string | null;
-  billId: string | null; // холбоотой хуулийн төсөл байвал /bills/[id]
-  questions: QuizQuestionView[];
+  quiz: QuizQuestionView[];
+  projectId?: string | null; // холбоотой төсөл → /bills/[projectId]
+  clauseId?: string | null;
 };
 
-// ── GET /api/vote-events ──
-// Хариулт: VoteEventView[]  (зөвхөн OPEN ба REVEALED)
-export type VoteResult = {
-  support: number;
-  oppose: number;
-  total: number;
-  passed: boolean; // дэмжсэн нь олонх (support > oppose)
+// POST /api/quiz/[id]/answer { chosenIndex } → QuizAnswerResult
+// Нэвтрээгүй ч зөв хариуг харуулна (saved: false, оноо өгөхгүй).
+export type QuizAnswerResult = {
+  correct: boolean;
+  correctIndex: number;
+  explanation: string;
+  pointsAwarded: number; // зөвхөн анхны оролдлого зөв бол 3
+  saved?: boolean; // false = зочин, хадгалаагүй
+  points?: number | null; // хэрэглэгчийн нийт оноо (зочинд null)
 };
 
-export type VoteEventView = {
+// POST /api/cards/[id]/view → CardViewResult (зочинд saved: false, алдаа биш)
+export type CardViewResult = {
+  saved: boolean;
+  points: number | null;
+  streak: number | null;
+  pointsAwarded: number;
+  newBadges: Badge[];
+};
+
+// ── ② Таамаг — санал хураалтын таамаглал ──
+export type VoteEventStatus = "OPEN" | "REVEALED";
+
+export const MAX_SUPPORT_GUESS = 126; // УИХ-ын гишүүдийн тоо
+
+// GET /api/vote-events → VoteEvent[]  (OPEN ба REVEALED)
+export type VoteEvent = {
   id: string;
-  agendaCode: string;
   title: string;
   hook: string;
+  isReplay: boolean; // Өмнө болсон санал хураалт бол ЗААВАЛ тэмдэглэнэ
   status: VoteEventStatus;
-  isReplay: boolean; // санал хураалт аль хэдийн болсон, "дахин тоглуулж" байна
-  voteDate: string | null;
-  billId: string | null;
-  predictionCount: number;
-  result: VoteResult | null; // зөвхөн REVEALED үед
-  revealedAt: string | null;
+  closesAt: string | null;
+  // Зөвхөн status === "REVEALED" үед бөглөгдөнө, бусад үед null.
+  actualSupport: number | null;
+  actualOppose: number | null;
+  actualTotal: number | null;
+  passed: boolean | null; // дэмжсэн нь олонх (support > oppose)
+  projectId?: string | null;
+  predictionCount?: number; // хэдэн хүн таамагласан
+  revealedAt?: string | null;
 };
 
-// ── Тэмдэг ──
-export type BadgeView = {
+export type Prediction = {
+  voteEventId: string;
+  willPass: boolean;
+  supportGuess: number;
+  points: number; // дүн гарахаас өмнө 0
+  id?: string;
+  createdAt?: string;
+};
+
+// POST /api/vote-events/[id]/predict { willPass, supportGuess: 0–126 } → 201 PredictResult
+export type PredictResult = {
+  prediction: Prediction;
+  newBadges: Badge[]; // анхны таамаг бол FIRST_PREDICTION
+};
+
+// ── ⑥ Би хууль өөрчилсөн — тэмдэг ──
+export const BADGE_TYPES = ["LAW_CHANGER", "STREAK_7", "FIRST_PREDICTION"] as const;
+export type BadgeType = (typeof BADGE_TYPES)[number];
+
+export const badgeLabels: Record<BadgeType, { title: string; emoji: string }> = {
+  LAW_CHANGER: { title: "Хууль өөрчилсөн иргэн", emoji: "🏛️" },
+  STREAK_7: { title: "7 хоног тасралтгүй", emoji: "🔥" },
+  FIRST_PREDICTION: { title: "Анхны таамаг", emoji: "🎯" },
+};
+
+export type Badge = {
   id: string;
   type: BadgeType;
-  lawTitle: string | null; // LAW_CHANGER үед
-  clauseNumber: string | null; // LAW_CHANGER үед
   createdAt: string;
+  lawTitle?: string | null; // LAW_CHANGER үед
+  clauseNumber?: string | null; // LAW_CHANGER үед
 };
 
 // GET /api/badges/[id] — нэвтрээгүй ч харна. Имэйл, бүтэн нэр хэзээ ч гарахгүй.
@@ -92,15 +145,6 @@ export type PublicBadge = {
 };
 
 // ── GET /api/me ──
-export type MyPrediction = {
-  id: string;
-  willPass: boolean;
-  supportGuess: number;
-  pointsAwarded: number | null; // null = дүн хараахан гараагүй
-  createdAt: string;
-  event: VoteEventView;
-};
-
 export type MyComment = {
   id: string;
   text: string;
@@ -135,57 +179,22 @@ export type NotificationView = {
   createdAt: string;
 };
 
-export type MeView = {
-  id: string;
+export type MeData = {
   name: string | null;
-  role: "CITIZEN" | "STAFF";
-  persona: Persona | null; // null = хараахан сонгоогүй
+  persona: Persona;
   points: number;
-  streak: number; // өнөөдөр эсвэл өчигдөр идэвхтэй байгаагүй бол 0
-  activeToday: boolean;
-  badges: BadgeView[];
-  predictions: MyPrediction[];
-  comments: MyComment[];
-  notifications: NotificationView[]; // сүүлийн 20
-  quizAnswers: { questionId: string; chosenIndex: number; correct: boolean }[];
-  viewedCardIdsToday: string[];
+  streak: number; // өнөөдөр эсвэл өчигдөр идэвхгүй байсан бол 0
+  badges: Badge[];
+  // Доорх талбаруудыг API үргэлж буцаана
+  id?: string;
+  role?: "CITIZEN" | "STAFF";
+  activeToday?: boolean;
+  predictions?: (Prediction & { event: VoteEvent })[];
+  comments?: MyComment[];
+  notifications?: NotificationView[]; // сүүлийн 20
+  quizAnswers?: { questionId: string; chosenIndex: number; correct: boolean }[];
+  viewedCardIdsToday?: string[];
 };
 
-// ── POST /api/me/persona { persona } → { persona } ──
+// POST /api/me/persona { persona } → { persona }
 export type PersonaResult = { persona: Persona };
-
-// ── POST /api/cards/[id]/view → CardViewResult ──
-// Нэвтрээгүй бол алдаа биш: saved = false, оноо null.
-export type CardViewResult = {
-  saved: boolean;
-  points: number | null;
-  streak: number | null;
-  pointsAwarded: number;
-  newBadges: BadgeView[];
-};
-
-// ── POST /api/quiz/[id]/answer { chosenIndex } → QuizAnswerResult ──
-// Нэвтрээгүй ч зөв хариуг харуулна (saved = false, оноо өгөхгүй).
-export type QuizAnswerResult = {
-  saved: boolean;
-  correct: boolean;
-  correctIndex: number;
-  explanation: string;
-  pointsAwarded: number; // зөвхөн анхны оролдлого зөв бол 3
-  points: number | null;
-};
-
-// ── POST /api/vote-events/[id]/predict { willPass, supportGuess } → PredictResult ──
-export type PredictionView = {
-  id: string;
-  voteEventId: string;
-  willPass: boolean;
-  supportGuess: number;
-  pointsAwarded: number | null;
-  createdAt: string;
-};
-
-export type PredictResult = {
-  prediction: PredictionView;
-  newBadges: BadgeView[];
-};

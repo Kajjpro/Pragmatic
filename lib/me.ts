@@ -1,12 +1,12 @@
 // GET /api/me — нэвтэрсэн иргэний бүх мэдээлэл нэг дор.
 // Бүх асуулгыг зэрэг (Promise.all) ажиллуулна — давталт дотор DB дуудахгүй (N+1 байхгүй).
 import { getMyComments } from "@/lib/law/queries";
-import { dateToDay, dayToDate, mongolianDay, toBadgeView, visibleStreak } from "@/lib/points";
+import { dateToDay, dayToDate, mongolianDay, toBadge, visibleStreak } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
-import { toVoteEventView, voteEventSelect } from "@/lib/feed";
-import type { MeView } from "@/lib/types";
+import { toVoteEvent, voteEventSelect } from "@/lib/feed";
+import type { MeData } from "@/lib/types";
 
-export async function getMe(userId: string): Promise<MeView> {
+export async function getMe(userId: string): Promise<MeData> {
   const today = mongolianDay();
 
   const [user, predictions, comments, notifications, quizAnswers, viewsToday] = await Promise.all([
@@ -22,7 +22,12 @@ export async function getMe(userId: string): Promise<MeView> {
         lastActiveDate: true,
         badges: {
           orderBy: { createdAt: "desc" },
-          select: { id: true, type: true, lawTitle: true, clauseNumber: true, createdAt: true },
+          select: {
+            id: true,
+            type: true,
+            createdAt: true,
+            submission: { select: { clause: { select: { number: true, project: { select: { title: true } } } } } },
+          },
         },
       },
     }),
@@ -31,9 +36,10 @@ export async function getMe(userId: string): Promise<MeView> {
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
+        voteEventId: true,
         willPass: true,
         supportGuess: true,
-        pointsAwarded: true,
+        points: true,
         createdAt: true,
         voteEvent: { select: voteEventSelect },
       },
@@ -65,14 +71,16 @@ export async function getMe(userId: string): Promise<MeView> {
     points: user.points,
     streak: visibleStreak(lastDay, today, user.streak),
     activeToday: lastDay === today,
-    badges: user.badges.map(toBadgeView),
-    predictions: predictions.map((p) => ({
-      id: p.id,
-      willPass: p.willPass,
-      supportGuess: p.supportGuess,
-      pointsAwarded: p.pointsAwarded,
-      createdAt: p.createdAt.toISOString(),
-      event: toVoteEventView(p.voteEvent),
+    badges: user.badges.map((b) =>
+      toBadge(
+        b,
+        b.submission && { lawTitle: b.submission.clause.project.title, clauseNumber: b.submission.clause.number },
+      ),
+    ),
+    predictions: predictions.map(({ voteEvent, createdAt, ...p }) => ({
+      ...p,
+      createdAt: createdAt.toISOString(),
+      event: toVoteEvent(voteEvent),
     })),
     comments,
     notifications: notifications.map((n) => ({
