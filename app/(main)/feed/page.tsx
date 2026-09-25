@@ -3,12 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import type { FeedCard, Persona, QuizAnswerResult } from "@/lib/types";
-import {
-  fetchFeed,
-  fetchMe,
-  postCardView,
-  postPersona,
-} from "@/components/feed/feed-data";
+import { fetchFeed, postCardView, postPersona } from "@/components/feed/feed-data";
+import { useMe } from "@/components/shell/me-context";
 import {
   readProgress,
   writeProgress,
@@ -29,11 +25,14 @@ import { StreakFlame } from "@/components/ui/streak-flame";
 // ① Өнөөдрийн хууль — бодит API-аас (GET /api/feed).
 // Оноо, streak: нэвтэрсэн бол СЕРВЕР эрх мэдэлтэй; зочин бол localStorage.
 export default function FeedPage() {
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn } = useUser();
+  const { me } = useMe(); // GET /api/me — MeProvider нэг удаа татдаг
 
   const [progress, setProgress] = useState<Progress | null>(null); // зочны
-  const [server, setServer] = useState<{ points: number; streak: number } | null>(null);
-  const [persona, setPersona] = useState<Persona | null>(null);
+  // Үйлдэл хийсний дараа сервер шинэ оноо буцаадаг — түүнийг шууд харуулна
+  const [override, setOverride] = useState<{ points: number; streak: number } | null>(null);
+  // Энэ сессэд гараар сонгосон бүлэг (сонгоогүй бол серверийнхийг дагана)
+  const [picked, setPicked] = useState<Persona | null>(null);
   const [loaded, setLoaded] = useState<{ persona: Persona; cards: FeedCard[] } | null>(null);
   const [failed, setFailed] = useState<{ persona: Persona; message: string } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -52,24 +51,14 @@ export default function FeedPage() {
     progressRef.current = p;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage бол гаднын сан; зөвхөн холбогдсоны дараа уншиж болно
     setProgress(p);
-    setPersona(p.persona ?? "ALL");
+    // Бүлэг нь progress-оос тооцогдоно; анх ирсэн хүнээс л асууна
     if (p.persona === null) setPersonaOpen(true);
   }, []);
 
-  // 2. Нэвтэрсэн бол серверийн оноо, streak, бүлгийг авна
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    let cancelled = false;
-    fetchMe().then((me) => {
-      if (cancelled || !me) return;
-      setServer({ points: me.points, streak: me.streak });
-      // Серверт хадгалсан бүлэг байвал түүнийг нь дагана
-      setPersona(me.persona);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoaded, isSignedIn]);
+  // Идэвхтэй бүлэг: сессийн сонголт → серверийнх → төхөөрөмжийнх → ALL.
+  // Тусдаа state-д хуулахгүй, шууд тооцно.
+  const persona: Persona | null =
+    picked ?? me?.persona ?? (progress ? (progress.persona ?? "ALL") : null);
 
   // 3. Бүлгээр фийд татна
   useEffect(() => {
@@ -98,15 +87,15 @@ export default function FeedPage() {
 
   // 4. Бүлэг сонгох / солих
   const pickPersona = useCallback(
-    (picked: Persona) => {
+    (choice: Persona) => {
       setPersonaOpen(false);
-      setPersona(picked);
+      setPicked(choice);
       const base = progressRef.current ?? readProgress();
-      const next = { ...base, persona: picked };
+      const next = { ...base, persona: choice };
       progressRef.current = next;
       writeProgress(next);
       setProgress(next);
-      if (isSignedIn) postPersona(picked); // зочинд 401 ирэх нь хэвийн
+      if (isSignedIn) postPersona(choice); // зочинд 401 ирэх нь хэвийн
     },
     [isSignedIn],
   );
@@ -116,7 +105,7 @@ export default function FeedPage() {
     const result = await postCardView(card.id);
 
     if (result?.saved) {
-      setServer({ points: result.points ?? 0, streak: result.streak ?? 0 });
+      setOverride({ points: result.points ?? 0, streak: result.streak ?? 0 });
       if (result.pointsAwarded > 0) {
         setPop(true);
         setTimeout(() => setPop(false), 900);
@@ -139,7 +128,7 @@ export default function FeedPage() {
   // 6. Викторын хариу ирэхэд оноог шинэчилнэ
   const onAnswered = useCallback((questionId: string, result: QuizAnswerResult) => {
     if (result.saved) {
-      setServer((s) => ({
+      setOverride((s) => ({
         points: result.points ?? s?.points ?? 0,
         streak: s?.streak ?? 0,
       }));
@@ -163,9 +152,9 @@ export default function FeedPage() {
     setSaveOpen(true);
   }, [isSignedIn]);
 
-  // Нэвтэрсэн бол сервер, эс бөгөөс локал
-  const points = server?.points ?? progress?.points ?? 0;
-  const streak = server?.streak ?? progress?.streak ?? 0;
+  // Шинэ серверийн утга → /api/me-ийн утга → зочны локал тоо
+  const points = override?.points ?? me?.points ?? progress?.points ?? 0;
+  const streak = override?.streak ?? me?.streak ?? progress?.streak ?? 0;
   const sheetOpen = personaOpen || quizCard !== null || saveOpen;
 
   return (

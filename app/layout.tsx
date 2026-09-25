@@ -12,6 +12,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
+  // Хуваалцах үеийн OG зургийн замыг бүтэн URL болгоно
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "Хариу — Хууль 60 секундэд",
   description:
     "Хуулийг 60 секундийн картаар ойлго, санал хураалтыг таамагла, саналаа хуульд тусга. Монгол Улсын Их Хурлыг залуучуудад ойртуулах платформ.",
