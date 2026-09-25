@@ -1,7 +1,37 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { StaffNav } from "@/components/staff/staff-nav";
-import { today } from "@/lib/stub/context";
+import { getUser } from "@/lib/auth";
 
-export default function StaffLayout({ children }: LayoutProps<"/staff">) {
+export default async function StaffLayout({ children }: LayoutProps<"/staff">) {
+  // 1. Нэвтэрсэн хэрэглэгчийг авна
+  const user = await getUser();
+
+  // 2. Нэвтрээгүй бол нэвтрэх хуудас руу шилжүүлнэ
+  if (!user) redirect("/sign-in");
+
+  // 3. Ажилтан биш бол товч мэдэгдэл харуулна
+  if (user.role !== "STAFF") {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-6 py-20 text-center">
+        <p className="text-[15px] font-semibold text-parliament-900">
+          Энэ хэсэг зөвхөн УИХТГ-ын ажилтанд нээлттэй.
+        </p>
+        <Link
+          href="/"
+          className="rounded-full bg-parliament-700 px-4 py-2 text-[12.5px] font-semibold text-white transition hover:bg-parliament-800"
+        >
+          Нүүр хуудас руу буцах
+        </Link>
+      </div>
+    );
+  }
+
+  // 4. Өнөөдрийн огноо (Улаанбаатарын цагаар, 2026-09-25 хэлбэрээр)
+  const today = new Date().toLocaleDateString("sv-SE", {
+    timeZone: "Asia/Ulaanbaatar",
+  });
+
   return (
     <div className="flex min-h-full flex-col bg-parliament-50/30">
       <div className="border-b border-ink-100 bg-white">
