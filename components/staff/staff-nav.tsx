@@ -5,39 +5,33 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 
 const items = [
-  { href: "/staff", label: "Миний төслүүд" },
+  { href: "/staff", label: "Төслүүд" },
   { href: "/staff/bills/new", label: "Шинэ төсөл" },
 ];
 
+// Ажилтны хэсгийн дэд цэс
 export function StaffNav() {
   const path = usePathname() ?? "";
   return (
-    <div className="border-b border-ink-100 bg-white">
-      <div className="scroll-slim mx-auto flex max-w-[1400px] items-center gap-1 overflow-x-auto px-4 sm:px-6">
+    <nav aria-label="Ажилтны цэс" className="border-b border-line bg-surface">
+      <div className="mx-auto flex max-w-[1400px] items-center gap-1 overflow-x-auto px-4 sm:px-6">
         {items.map((it) => {
-          const active =
-            it.href === "/staff"
-              ? path === "/staff"
-              : path.startsWith(it.href);
+          const active = it.href === "/staff" ? path === "/staff" : path.startsWith(it.href);
           return (
             <Link
               key={it.href}
               href={it.href}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "press relative flex min-h-12 items-center whitespace-nowrap px-4 text-[14px] font-semibold transition-colors",
-                active
-                  ? "text-ink-950"
-                  : "text-ink-600 hover:text-brand-800",
+                "-mb-px flex min-h-12 items-center whitespace-nowrap border-b-2 px-4 text-[15px] font-medium",
+                active ? "border-primary text-heading" : "border-transparent text-muted hover:text-fg",
               )}
             >
               {it.label}
-              {active ? (
-                <span className="absolute inset-x-3 -bottom-px h-[3px] rounded-full bg-point-400" />
-              ) : null}
             </Link>
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }

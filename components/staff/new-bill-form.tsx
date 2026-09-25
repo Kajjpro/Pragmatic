@@ -54,7 +54,7 @@ export function NewBillForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-5 rounded-2xl border border-ink-200 bg-white p-5 shadow-[0_20px_45px_-30px_rgba(15,42,99,0.3)] sm:p-6"
+      className="flex flex-col gap-5 rounded-2xl border border-ink-200 bg-white p-5 shadow-card sm:p-6"
     >
       <div className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_260px]">
         <Field label="Төслийн нэр">
@@ -107,7 +107,7 @@ export function NewBillForm() {
       </Field>
 
       {error ? (
-        <p className="rounded-xl border-l-4 border-rose-500 bg-rose-50 px-4 py-3 text-[14.5px] font-medium text-rose-900">
+        <p className="rounded-xl border-l-4 border-bad-500 bg-bad-50 px-4 py-3 text-[14.5px] font-medium text-bad-800">
           {error}
         </p>
       ) : null}
@@ -121,7 +121,7 @@ export function NewBillForm() {
         <button
           type="submit"
           disabled={busy}
-          className="press inline-flex min-h-12 items-center gap-2 rounded-full bg-point-400 px-6 text-[15px] font-bold text-ink-950 shadow-[0_8px_24px_-8px_rgba(255,198,7,0.6)] hover:bg-point-300 disabled:cursor-wait disabled:opacity-60"
+          className="press inline-flex min-h-12 items-center gap-2 rounded-full bg-brand-600 px-6 text-[15px] font-semibold text-white hover:bg-brand-700 disabled:cursor-wait disabled:opacity-60"
         >
           {busy ? "Харьцуулж байна…" : "Харьцуулалт үүсгэх"}
         </button>
