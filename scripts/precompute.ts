@@ -23,6 +23,7 @@ import { makeQuiz, makeQuizText, type QuizQuestion } from "../lib/ai/quiz";
 import { filterComments, groupComments } from "../lib/ai/comments";
 import { writeReply } from "../lib/ai/reply";
 import { makeVoteHook } from "../lib/ai/vote-hook";
+import { finalReadingVote, getAgendaList, getAgendaVoteList, type Agenda } from "../lib/parliament";
 import { modelsUsed } from "../lib/ai/client";
 import {
   optionsToText,
@@ -34,6 +35,7 @@ import {
   type PrecomputedComment,
   type PrecomputedGroup,
   type PrecomputedQuiz,
+  type PrecomputedVoteEvent,
 } from "../lib/ai/precomputed";
 
 // ── Тохиргоо ──
@@ -42,6 +44,7 @@ const OUT_DIR = getArg("out") || "data";
 const MAX_BILLS = Number(getArg("max-bills") || 10);
 const USE_LAWFORUM = !args.includes("--no-lawforum");
 const MAX_CHANGE_CARDS = 8;
+const MAX_VOTE_EVENTS = 5; // таамгийн тоглоомд хэдэн асуудал бэлдэх вэ
 const MIN_DESCRIPTION_LENGTH = 400; // үүнээс богино тайлбартай төслөөс үнэн зөв карт гарахгүй
 const MAX_DESCRIPTION_LENGTH = 5000; // AI-д хэт урт текст илгээхгүй
 const QUIZ_TRIES = 2;
@@ -58,7 +61,7 @@ const TEEN_TOPICS = [
 ];
 
 // Нэрэнд нь эдгээр үг байвал алгасна: тайлан, олон улсын гэрээ, худалдан авалт нь сурагчдад карт болохгүй
-const SKIP_TOPICS = ["тайлан", "соёрхон батлах", "хэлэлцээр", "гэрээ", "худалдан авах", "зээл"];
+const SKIP_TOPICS = ["тайлан", "соёрхон батлах", "хэлэлцээр", "гэрээ", "худалдан авах", "зээл", "давхардал"];
 
 function getArg(name: string): string {
   const found = args.find((a) => a.startsWith(`--${name}=`));
@@ -454,21 +457,56 @@ function orderCards(cards: PrecomputedCard[]): PrecomputedCard[] {
 // 4. Санал хураалтын таамаг
 // ════════════════════════════════════════════════
 
-async function buildVoteEvents() {
+async function buildVoteEvents(): Promise<PrecomputedVoteEvent[]> {
   console.log("\n══ 4. Санал хураалтын таамаг (ParliamentAPI)");
-  // Dev 1-ийн lib/parliament.ts-д getAgendaList, getAgendaVoteList хэрэгтэй.
-  // Файл одоогоор хоосон тул TypeScript import хийхгүй — замыг хувьсагчаар өгнө
-  const parliamentPath = "../lib/parliament";
-  const parliament = (await import(parliamentPath)) as Record<string, unknown>;
-  if (typeof parliament.getAgendaList !== "function" || typeof parliament.getAgendaVoteList !== "function") {
-    console.log("   ✗ lib/parliament.ts-д getAgendaList / getAgendaVoteList алга → алгаслаа");
-    return [];
+  const events: PrecomputedVoteEvent[] = [];
+
+  // a. ParliamentAPI-ийн хаяг (хакатоны зохион байгуулагчаас авна) тохируулаагүй бол алгасна
+  if (!process.env.PARLIAMENT_API_URL) {
+    console.log("   ✗ PARLIAMENT_API_URL .env-д алга → алгаслаа");
+    return events;
   }
-  // Функцууд бэлэн болмогц тэдний буцаах хэлбэрийг харж энд гүйцээнэ (Dev 2).
-  // makeVoteHook(title, summary) → hook, isReplay: true.
-  console.log("   ⚠ lib/parliament.ts бэлэн болсон — энэ алхмыг гүйцээх хэрэгтэй (Dev 2)");
-  void makeVoteHook;
-  return [];
+
+  // b. Хэлэлцэх асуудлын жагсаалт
+  let agendas: Agenda[] = [];
+  try {
+    agendas = await getAgendaList();
+  } catch (error) {
+    console.log("   ✗ ParliamentAPI-тай холбогдож чадсангүй, алгаслаа:", String(error).slice(0, 200));
+    return events;
+  }
+
+  // c. Залуучуудад хамаатай сэдвээр эрэмбэлнэ (карттай ижил оноо)
+  const candidates = agendas
+    .map((agenda) => ({ agenda, score: topicScore(agenda.title) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  console.log(`   ${agendas.length} асуудлаас ${candidates.length} нь сэдэвт тохирч байна`);
+
+  // d. Асуудал бүрт: санал хураалт болсон эсэх (replay) + төвийг сахисан таамгийн асуулт
+  for (const { agenda } of candidates) {
+    if (events.length >= MAX_VOTE_EVENTS) {
+      break;
+    }
+    let isReplay = false;
+    try {
+      const votes = await getAgendaVoteList(agenda.agendaCode);
+      isReplay = finalReadingVote(votes) !== null; // эцсийн санал хураалт аль хэдийн болсон
+    } catch (error) {
+      console.log(`   ${agenda.agendaCode}: санал хураалтын мэдээлэл авч чадсангүй, алгаслаа (${String(error).slice(0, 80)})`);
+      continue;
+    }
+
+    await pause();
+    const hook = await makeVoteHook(agenda.title, agenda.title);
+    if (hook === null) {
+      console.log(`   ✗ ${agenda.agendaCode}: hook гарсангүй`);
+      continue;
+    }
+    events.push({ agendaCode: agenda.agendaCode, title: agenda.title, hook, isReplay });
+    console.log(`   ✓ ${agenda.agendaCode}${isReplay ? " (өмнө болсон — дахин тоглох)" : ""}: ${hook}`);
+  }
+  return events;
 }
 
 // ════════════════════════════════════════════════

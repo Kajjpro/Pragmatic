@@ -34,8 +34,10 @@ export function isInText(part: string, whole: string): boolean {
 export function findNumbers(text: string): string[] {
   // a. Мянгатын зай, таслалыг арилгана: "1 000 000" → "1000000"
   const joined = text.replace(/(\d)[\s,](?=\d{3}(?!\d))/g, "$1");
-  // b. Цифрүүдийн бүлгийг олно: "40 цаг, 12 цаг" → ["40", "12"]
-  const groups = joined.match(/\d+/g) || [];
+  // b. Цифрүүдийн бүлгийг олно: "40 цаг, 12 цаг" → ["40", "12"].
+  //    Аравтын бутархай, заалтын дугаарыг нэг тоо гэж үзнэ: "20.8 тэрбум" → "20.8" ("20", "8" биш).
+  //    Ингэснээр эх текстэд "20.8" байхад AI "8 тэрбум" гэж зохиовол барина.
+  const groups = joined.match(/\d+(?:\.\d+)*/g) || [];
   // c. Эхний тэгүүдийг арилгана: "08" → "8"
   const numbers: string[] = [];
   for (const group of groups) {
