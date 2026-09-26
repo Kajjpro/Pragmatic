@@ -37,7 +37,21 @@ const fakeParliament = {
     return [{ agendaCode: "R1", title: "Replay" }];
   },
   async getAgendaVoteList() {
-    return [{ support: 62, oppose: 8, total: 70, isFinalReading: true, votedAt: null }];
+    return [
+      {
+        customId: "1_1",
+        agendaCode: "R1",
+        agendaTitle: "Replay",
+        meetingId: 1,
+        name: "Replay төслийг эцэслэн батлах санал хураалт явуулъя",
+        voteType: "Эцэслэн батлах",
+        support: 62,
+        oppose: 8,
+        total: 70,
+        present: 70,
+        votedAt: null,
+      },
+    ];
   },
 };
 

@@ -5,11 +5,12 @@
 //   1. Демо төсөл (data/law.txt, bill.txt, reason.txt) → заалт бүрийн харьцуулалт + CHANGE картууд
 //   2. lawforum.parliament.mn-ийн өсвөр үеийнхэнд хамаатай төслүүд → BILL картууд
 //   3. Карт бүрт 3 асуулттай сорил
-//   4. Санал хураалтын таамаг (lib/parliament.ts бэлэн бол)
+//   4. Санал хураалтын таамаг (УИХ-ын ParliamentAPI — .env: PARLIAMENT_API_URL, PARLIAMENT_API_USER, PARLIAMENT_API_PASS)
 //   5. data/comments.json → шүүх → бүлэглэх → хариуны ноорог
 //   6. data/precomputed.json + data/review.md (гараар хянах хүснэгт)
 //
-// Ажиллуулах: AI_CALL_DELAY_MS=1500 npx tsx --env-file=.env scripts/precompute.ts
+// Ажиллуулах: AI_CALL_DELAY_MS=1500 npx tsx --conditions=react-server --env-file=.env scripts/precompute.ts
+//   (--conditions=react-server заавал: lib/parliament.ts, lib/lawforum.ts нь "server-only")
 //   --max-bills=10    lawforum-аас хамгийн ихдээ хэдэн төсөл авах
 //   --no-lawforum     lawforum-ыг алгасах
 //   --out=хавтас      өөр хавтас руу бичих (AI_STUB=true үед заавал)

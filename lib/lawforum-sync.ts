@@ -7,15 +7,11 @@
 //   - Seed-ийн өгөгдлийг (харьцуулалт, карт, демо шат, текстүүд) ДАРЖ БИЧИХГҮЙ:
 //     аль хэдийн байгаа төсөлд зөвхөн LawForum-ын мета мэдээллийг шинэчилнэ.
 //   - LawForum-ын "stage" дугаарын утга баталгаагүй тул манай 4 шат руу хөрвүүлэхгүй.
-import { getAllProjects, getProject, type ProjectDetail, type ProjectListItem } from "@/lib/lawforum";
+import { getAllProjects, getProject, lawforumDate, lawforumPageUrl, type ProjectDetail, type ProjectListItem } from "@/lib/lawforum";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 const CONCURRENCY = 6; // LawForum-ыг ачаалахгүйн тулд зэрэг 6 хүсэлт
-
-export function lawforumPageUrl(id: number): string {
-  return `https://lawforum.parliament.mn/project/${id}`;
-}
 
 // HTML тайлбарыг цэвэр текст болгоно (мөр шилжилтийг хадгална)
 export function stripHtml(html: string): string {
@@ -57,7 +53,7 @@ async function saveOne(item: ProjectListItem, detail: ProjectDetail | null): Pro
     categoryTitle: detail?.categoryTitle ?? item.categoryTitle ?? null,
     status: item.status,
     lawforumStage: item.stage,
-    publishedAt: item.publishedOnUtc ? new Date(item.publishedOnUtc) : null,
+    publishedAt: lawforumDate(item.publishedOnUtc),
     ...(detail ? { allowComments: detail.isAllowComments, lawforumStats: detail.statistics ?? undefined } : {}),
   };
 
