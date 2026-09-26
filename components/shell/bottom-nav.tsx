@@ -16,7 +16,7 @@ export function BottomNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="mx-auto grid max-w-lg grid-cols-5">
-        {navItems.map((item) => {
+        {navItems.filter((item) => !item.desktopOnly).map((item) => {
           const active = isActive(item.href, path);
           const Icon = item.icon;
           return (

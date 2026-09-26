@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Scale, Vote } from "lucide-react";
+import Link from "next/link";
+import { Scale, Trophy, Vote } from "lucide-react";
 import { Container } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
@@ -70,6 +71,9 @@ export default function PredictPage() {
         <p className="max-w-2xl text-[15.5px] text-muted">
           УИХ-ын санал хураалтын дүнг урьдчилан таамаглаад бодит дүнтэй харьцуулна уу. Дүн гармагц оноо автоматаар бодогдоно.
         </p>
+        <Link href="/leaderboard?tab=predict" className="inline-flex w-fit items-center gap-1.5 text-[14.5px] font-semibold text-action underline underline-offset-2">
+          <Trophy aria-hidden className="h-4 w-4" /> Тэргүүлэгчид
+        </Link>
       </div>
 
       <div className="mt-7 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">

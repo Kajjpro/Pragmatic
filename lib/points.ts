@@ -108,17 +108,19 @@ async function unlockBadge(
 
 // ───────────── Оноо өгөх функцууд ─────────────
 
-// Карт үзсэн: өдөрт нэг картад +1, streak шинэчилнэ, 7 хоног дараалбал STREAK_7.
+// Карт үзсэн: үзэлт, streak-ийг бичнэ, 7 хоног дараалбал STREAK_7.
+// Зөвхөн гүйлгэхэд оноо ӨГӨХГҮЙ (оноо хуурахаас сэргийлнэ). Уншсаны +1-ийг тэр картын асуултад
+// анх зөв хариулахад awardQuizAnswer өгнө — жинхэнэ уншсан эсэхийг асуултаар шалгана.
 export async function awardCardView(userId: string, cardId: string) {
   const today = mongolianDay();
 
   return prisma.$transaction(async (tx) => {
-    // 1. Өнөөдрийн үзэлтийг бичнэ. Аль хэдийн байвал count = 0 (оноо өгөхгүй).
-    const inserted = await tx.cardView.createMany({
+    // 1. Өнөөдрийн үзэлтийг бичнэ (давхардвал алгасна). Оноо өгөхгүй — дээрх тайлбарыг үз.
+    await tx.cardView.createMany({
       data: [{ userId, cardId, day: dayToDate(today) }],
       skipDuplicates: true,
     });
-    const pointsAwarded = inserted.count === 1 ? POINTS.CARD_VIEW : 0;
+    const pointsAwarded = 0;
 
     // 2. Streak-ийг тооцно
     const before = await tx.user.findUniqueOrThrow({
@@ -151,12 +153,13 @@ export async function awardCardView(userId: string, cardId: string) {
 }
 
 // Асуултад хариулсан: зөвхөн анхны оролдлого хадгалагдана, зөв бол +3.
+// Тэр картын асуултад АНХ удаа зөв хариулж байгаа бол картыг уншсаны +1 нэмж өгнө.
 // Асуулт олдохгүй бол null. chosenIndex-ийн хүрээг route шалгасан байх ёстой.
 export async function awardQuizAnswer(userId: string, questionId: string, chosenIndex: number) {
   return prisma.$transaction(async (tx) => {
     const question = await tx.quizQuestion.findUnique({
       where: { id: questionId },
-      select: { correctIndex: true, explanation: true },
+      select: { correctIndex: true, explanation: true, cardId: true },
     });
     if (!question) return null;
 
@@ -168,7 +171,15 @@ export async function awardQuizAnswer(userId: string, questionId: string, chosen
       skipDuplicates: true,
     });
     const firstTry = inserted.count === 1;
-    const pointsAwarded = firstTry && correct ? POINTS.QUIZ_CORRECT : 0;
+    let pointsAwarded = firstTry && correct ? POINTS.QUIZ_CORRECT : 0;
+
+    // Картыг уншсаны оноо: энэ картын асуултуудаас зөв хариулсан нь яг энэ нэг бол (анхны зөв хариулт)
+    if (pointsAwarded > 0) {
+      const correctOnCard = await tx.quizAnswer.count({
+        where: { userId, correct: true, question: { cardId: question.cardId } },
+      });
+      if (correctOnCard === 1) pointsAwarded += POINTS.CARD_VIEW;
+    }
 
     const user = await tx.user.update({
       where: { id: userId },
