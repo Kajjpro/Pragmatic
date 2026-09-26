@@ -154,17 +154,17 @@ async function runDemo() {
   assert.equal(cards.length, 3);
   assert.ok(!JSON.stringify(cards).includes("correctIndex"));
 
-  // 2. Демо иргэн: 3 карт (+3), асуулт (+3), таамаг (FIRST_PREDICTION)
+  // 2. Демо иргэн: 3 карт (гүйлгэхэд оноогүй), асуулт (+3, картыг уншсаны +1), таамаг (FIRST_PREDICTION)
   for (const c of cards) await points.awardCardView(citizen.id, c.id);
   const quiz = await points.awardQuizAnswer(citizen.id, cards[0].quiz[0].id, 1);
-  assert.equal(quiz!.pointsAwarded, 3);
+  assert.equal(quiz!.pointsAwarded, 3 + 1);
   const [event] = await feed.getVoteEvents();
   assert.equal(event.isReplay, true);
   assert.equal(event.actualSupport, null); // дүн нууц
   const predicted = await points.savePrediction(citizen.id, event.id, true, 60);
   assert.equal(predicted.status, "OK");
   let view = await me.getMe(citizen.id);
-  assert.deepEqual([view.points, view.streak], [2 + 3 + 3, 1]); // seed-ийн санал +2
+  assert.deepEqual([view.points, view.streak], [2 + 4, 1]); // seed-ийн санал +2
   assert.deepEqual(view.badges.map((b) => b.type), ["FIRST_PREDICTION"]);
 
   // 3. Ажилтан: "Санал бүлэглэх" — бэлэн бүлэг хэвээр, AI дуудагдахгүй
@@ -178,7 +178,7 @@ async function runDemo() {
 
   // 4. Демо иргэн: мэдэгдэл, тэмдэг, /b/[id]
   view = await me.getMe(citizen.id);
-  assert.equal(view.points, 8 + 50);
+  assert.equal(view.points, 6 + 50);
   assert.ok(view.notifications!.some((n) => n.text === "✅ Таны санал хуульд тусгагдлаа"));
   const badge = view.badges.find((b) => b.type === "LAW_CHANGER")!;
   const pub = await feed.getPublicBadge(badge.id);
@@ -192,7 +192,7 @@ async function runDemo() {
   if (found.status !== "OK") return;
   await points.revealVoteEvent(event.id, found.counts);
   view = await me.getMe(citizen.id);
-  assert.equal(view.points, 58 + 20);
+  assert.equal(view.points, 56 + 20);
   assert.equal(view.predictions![0].points, 20);
   assert.ok(view.notifications!.some((n) => n.text === "Таамгийн дүн гарлаа: +20 оноо"));
 }
