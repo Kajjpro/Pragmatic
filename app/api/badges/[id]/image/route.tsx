@@ -66,7 +66,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/badges/[id]/ima
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 26, color: "#4B5563" }}>
-              <div style={{ display: "flex", fontFamily: SERIF, fontSize: 34, color: "#111827" }}>Хариу</div>
+              <div style={{ display: "flex", fontFamily: SERIF, fontSize: 34, color: "#111827" }}>Parlagmatic</div>
               <div style={{ display: "flex" }}>Иргэний нөлөөний батламж</div>
             </div>
 
@@ -83,7 +83,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/badges/[id]/ima
 
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 24, color: "#4B5563" }}>
               <div style={{ display: "flex" }}>{details}</div>
-              <div style={{ display: "flex" }}>Олгосон: Хариу платформ</div>
+              <div style={{ display: "flex" }}>Олгосон: Parlagmatic платформ</div>
             </div>
           </div>
         </div>

@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: PageProps<"/b/[id]">): Promis
 // Платформын тамга (төрийн тамга биш) — "ТУСГАГДСАН"
 function Stamp({ date }: { date: string }) {
   return (
-    <svg viewBox="0 0 200 200" className="h-28 w-28 -rotate-12 text-good opacity-90 sm:h-32 sm:w-32" role="img" aria-label="Хариу платформын тамга: Тусгагдсан">
+    <svg viewBox="0 0 200 200" className="h-28 w-28 -rotate-12 text-good opacity-90 sm:h-32 sm:w-32" role="img" aria-label="Parlagmatic платформын тамга: Тусгагдсан">
       <defs>
         <path id="stamp-ring" d="M100,100 m-72,0 a72,72 0 1,1 144,0 a72,72 0 1,1 -144,0" />
       </defs>
@@ -99,7 +99,7 @@ export default async function BadgePage({ params }: PageProps<"/b/[id]">) {
                 "repeating-linear-gradient(45deg, rgb(17 24 39 / 0.018) 0 2px, transparent 2px 9px), repeating-linear-gradient(-45deg, rgb(17 24 39 / 0.018) 0 2px, transparent 2px 9px)",
             }}
           >
-            <p className="text-[12.5px] font-semibold uppercase tracking-[0.28em] text-muted">Хариу · Иргэний оролцооны платформ</p>
+            <p className="text-[12.5px] font-semibold uppercase tracking-[0.28em] text-muted">Parlagmatic · Иргэний оролцооны платформ</p>
             <h1 className="mt-4 text-[26px] font-bold uppercase tracking-[0.06em] sm:text-[38px]">
               {isImpact ? "Иргэний нөлөөний батламж" : "Оролцооны тэмдэг"}
             </h1>
@@ -138,13 +138,13 @@ export default async function BadgePage({ params }: PageProps<"/b/[id]">) {
                 </div>
                 <div>
                   <dt className="inline text-muted">Олгосон: </dt>
-                  <dd className="inline font-semibold">Хариу платформ</dd>
+                  <dd className="inline font-semibold">Parlagmatic платформ</dd>
                 </div>
               </dl>
               {isImpact ? <Stamp date={formatShortDate(badge.createdAt)} /> : null}
             </div>
             <p className="mt-6 text-[12.5px] text-muted">
-              Энэ нь Хариу платформын иргэний оролцооны батламж бөгөөд төрийн албан ёсны баримт бичиг биш. Тусгасан эсэхийг УИХ-ын ажлын албаны хариунд үндэслэв.
+              Энэ нь Parlagmatic платформын иргэний оролцооны батламж бөгөөд төрийн албан ёсны баримт бичиг биш. Тусгасан эсэхийг УИХ-ын ажлын албаны хариунд үндэслэв.
             </p>
           </div>
         </div>
@@ -155,7 +155,7 @@ export default async function BadgePage({ params }: PageProps<"/b/[id]">) {
           url={new URL(`/b/${badge.id}`, process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").href}
           path={`/b/${badge.id}`}
           imagePath={`/api/badges/${badge.id}/image`}
-          text={`${name} «${label}» батламж авлаа — Хариу платформ.`}
+          text={`${name} «${label}» батламж авлаа — Parlagmatic платформ.`}
         />
       </div>
       <div className="mt-4 flex flex-wrap justify-center gap-3">
