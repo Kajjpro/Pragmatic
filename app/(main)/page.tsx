@@ -10,11 +10,11 @@ import type { WordPart } from "@/lib/law/types";
 import { formatDate, formatTime } from "@/lib/format";
 
 export const metadata: Metadata = {
-  title: { absolute: "Хариу — Хууль таны амьдралыг өөрчилдөг" },
+  title: { absolute: "Parlagmatic — Хууль таны амьдралыг өөрчилдөг" },
   description:
     "Улсын Их Хурал хуульд юу өөрчилж байгааг энгийнээр ойлгож, санал хураалтыг дагаж, саналаа өгөх платформ.",
   openGraph: {
-    title: "Хариу — Хууль таны амьдралыг өөрчилдөг",
+    title: "Parlagmatic — Хууль таны амьдралыг өөрчилдөг",
     description: "Хуулийн өөрчлөлтийг энгийнээр ойлгож, санал хураалтыг дагаж, саналаа өгөх платформ.",
   },
 };
@@ -75,7 +75,7 @@ export default async function HomePage() {
     stats.citizenComments !== null && {
       value: stats.citizenComments.toLocaleString("mn-MN"),
       label: "Иргэдийн өгсөн санал",
-      source: "Хариу",
+      source: "Parlagmatic",
     },
   ]
     .filter((f): f is { value: string; label: string; source: string } => Boolean(f))

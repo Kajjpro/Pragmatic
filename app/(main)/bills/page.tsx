@@ -169,7 +169,7 @@ export default async function BillsPage({ searchParams }: PageProps<"/bills">) {
                   ) : null}
                   {b.commentCount > 0 ? (
                     <div>
-                      <dt className="inline">Хариу-ийн санал: </dt>
+                      <dt className="inline">Parlagmatic-ийн санал: </dt>
                       <dd className="inline font-semibold tabular-nums text-fg">{b.commentCount}</dd>
                     </div>
                   ) : null}
