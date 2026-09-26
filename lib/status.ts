@@ -13,7 +13,8 @@ export type SourceStatus = {
 
 async function checkParliament(): Promise<SourceStatus> {
   const checkedAt = new Date().toISOString();
-  if (!process.env.PARLIAMENT_API_URL) return { parliament: "unconfigured", checkedAt };
+  const { PARLIAMENT_API_URL, PARLIAMENT_API_USER, PARLIAMENT_API_PASS } = process.env;
+  if (!PARLIAMENT_API_URL || !PARLIAMENT_API_USER || !PARLIAMENT_API_PASS) return { parliament: "unconfigured", checkedAt };
   try {
     await getAgendaList();
     return { parliament: "online", checkedAt };

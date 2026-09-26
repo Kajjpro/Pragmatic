@@ -1,0 +1,33 @@
+{
+  "func": "GET /api/v1/projects/11173",
+  "params": {
+    "id": 11173
+  },
+  "fetchedAt": "2026-09-26T00:56:41.136Z",
+  "response": {
+    "id": 11173,
+    "title": "МАЛЧНЫ ТУХАЙ ХУУЛЬД ӨӨРЧЛӨЛТ ОРУУЛАХ ТУХАЙ",
+    "description": null,
+    "projectNumber": "00QCY7XB",
+    "typeId": 1,
+    "typeTitle": "Монгол Улсын хууль",
+    "categoryId": 1,
+    "categoryTitle": "Бие даасан",
+    "status": 1,
+    "stage": 0,
+    "slugUrl": null,
+    "createdOnUtc": "2026-09-23T04:01:56.7224951",
+    "updatedOnUtc": null,
+    "publishedOnUtc": "2026-09-22T16:00:00",
+    "implementFromUtc": null,
+    "isActive": false,
+    "isAllowComments": false,
+    "statistics": {
+      "hits": 54,
+      "comments": 0,
+      "likes": 0,
+      "dislikes": 0,
+      "follows": 0
+    }
+  }
+}

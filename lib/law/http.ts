@@ -48,3 +48,17 @@ export function bool(body: Record<string, unknown>, key: string): boolean {
   if (typeof v !== "boolean") throw new HttpError(400, `"${key}" нь true/false байх ёстой`);
   return v;
 }
+
+// Жагсаалтын query: ?q=хайх&limit=50&offset=0 (/api/parliament/*, /api/drafts)
+export type ListQuery = { q: string; limit: number; offset: number };
+
+export function listQuery(url: URL, defaultLimit = 50, maxLimit = 500): ListQuery {
+  const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
+  const limit = Number(url.searchParams.get("limit") ?? defaultLimit);
+  const offset = Number(url.searchParams.get("offset") ?? 0);
+  if (!Number.isInteger(limit) || limit < 1 || limit > maxLimit) {
+    throw new HttpError(400, `"limit" нь 1–${maxLimit} хооронд бүхэл тоо байх ёстой`);
+  }
+  if (!Number.isInteger(offset) || offset < 0) throw new HttpError(400, `"offset" нь 0 эсвэл түүнээс их бүхэл тоо байх ёстой`);
+  return { q, limit, offset };
+}
