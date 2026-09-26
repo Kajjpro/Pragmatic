@@ -84,7 +84,7 @@ export default async function HomePage() {
   return (
     <>
       {/* Нүүр хэсэг */}
-      <section className="border-b border-line bg-surface">
+      <section className="border-b border-line bg-gradient-to-b from-brand-50 via-surface to-surface">
         <Container className="py-14 sm:py-20">
           <h1 className="max-w-3xl text-[32px] font-bold leading-tight sm:text-[44px]">
             Хууль таны амьдралыг өөрчилдөг. Та түүнийг мэдэх үү?

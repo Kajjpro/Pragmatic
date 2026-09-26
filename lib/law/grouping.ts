@@ -53,10 +53,19 @@ export async function groupBillComments(
     });
     if (unfiltered.length > 0) {
       await pause();
-      const verdicts = await ai.filterComments(
-        clauseText,
-        unfiltered.map((c) => ({ id: c.id, text: c.body })),
-      );
+      // AI түр ажиллахгүй (түлхүүргүй, хязгаар г.м.) бол ажилтны урсгал зогсохгүй:
+      // бүгдийг «хамааралтай» гэж тэмдэглээд (устгахгүй) доорх бүлэгт оруулна
+      let verdicts: Awaited<ReturnType<AiApi["filterComments"]>> = [];
+      let aiDown = false;
+      try {
+        verdicts = await ai.filterComments(
+          clauseText,
+          unfiltered.map((c) => ({ id: c.id, text: c.body })),
+        );
+      } catch (err) {
+        aiDown = true;
+        console.error(`filterComments failed on clause ${clause.number}:`, err);
+      }
       const verdictById = new Map(verdicts.map((v) => [v.id, v]));
 
       for (const c of unfiltered) {
@@ -64,7 +73,7 @@ export async function groupBillComments(
         const status = v && FILTER_STATUSES.includes(v.status) ? v.status : "RELEVANT";
         await prisma.comment.update({
           where: { id: c.id },
-          data: { filterStatus: status, filterReason: v?.reason || null },
+          data: { filterStatus: status, filterReason: v?.reason || (aiDown ? "AI түр ажиллаагүй — шүүгээгүй" : null) },
         });
         if (status !== "RELEVANT") filteredCount++;
         // Иргэний санал хамааралтай бол +2 оноо (нэг саналд нэг л удаа)
@@ -83,10 +92,16 @@ export async function groupBillComments(
     const bodyById = new Map(relevant.map((c) => [c.id, c.body]));
 
     await pause();
-    const proposed = await ai.groupComments(
-      clauseText,
-      relevant.map((c) => ({ id: c.id, text: c.body })),
-    );
+    let proposed: Awaited<ReturnType<AiApi["groupComments"]>> = [];
+    try {
+      proposed = await ai.groupComments(
+        clauseText,
+        relevant.map((c) => ({ id: c.id, text: c.body })),
+      );
+    } catch (err) {
+      // AI бүлэглэж чадаагүй → бүгд доорх «Шинэ санал» бүлэгт орно (ажилтан хариулж чадна)
+      console.error(`groupComments failed on clause ${clause.number}:`, err);
+    }
 
     const used = new Set<string>();
     const groups = proposed
@@ -102,7 +117,8 @@ export async function groupBillComments(
       .filter((g) => g.commentIds.length > 0);
     const leftover = relevant.filter((c) => !used.has(c.id)).map((c) => c.id);
     if (leftover.length > 0) {
-      groups.push({ title: "Бусад санал", summary: `${leftover.length} санал`, commentIds: leftover });
+      const title = proposed.length === 0 ? "Шинэ санал" : "Бусад санал";
+      groups.push({ title, summary: `${leftover.length} санал`, commentIds: leftover });
     }
 
     for (const g of groups) {

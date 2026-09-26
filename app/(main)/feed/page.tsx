@@ -16,7 +16,7 @@ import { ListSkeleton } from "@/components/ui/page-loading";
 import { Button } from "@/components/ui/button";
 import { StreakPanel } from "@/components/feed/streak-panel";
 import Link from "next/link";
-import { CheckCircle2, Circle, Trophy } from "lucide-react";
+import { CheckCircle2, Circle, Sparkles, Trophy } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { POINTS } from "@/lib/points-rules";
 
@@ -200,6 +200,13 @@ export default function FeedPage() {
               action={active === "ALL" ? undefined : <Button onClick={() => pickPersona("ALL")}>Бүх картыг харах</Button>}
             />
           ) : (
+            <>
+            <p className="mb-3 flex items-start gap-2 rounded-xl border border-brand-100 bg-action-bg px-4 py-2.5 text-[14px] text-action">
+              <Sparkles aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                Оноо авахын тулд картыг уншаад асуултад нь хариул: зөв хариулт бүр +{POINTS.QUIZ_CORRECT}, картын анхны зөв хариултад нэмээд +{POINTS.CARD_VIEW}. Зөвхөн гүйлгэхэд оноо өгөхгүй.
+              </span>
+            </p>
             <CardReader
               cards={cards}
               index={index}
@@ -209,6 +216,7 @@ export default function FeedPage() {
               onCardViewed={onCardViewed}
               onAnswered={onAnswered}
             />
+            </>
           )}
         </div>
 

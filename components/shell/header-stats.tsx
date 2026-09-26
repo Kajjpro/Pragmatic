@@ -5,52 +5,6 @@ import { Award, Flame } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useScore } from "./me-context";
 import { StreakModal } from "./streak-modal";
-import type { SourceState } from "@/lib/status";
-
-// ── УИХ-ын API-ийн бодит холболт (GET /api/status, 5 минутын кэштэй) ──
-const statusText: Record<SourceState | "loading", string> = {
-  loading: "УИХ API шалгаж байна",
-  online: "УИХ API холбогдсон",
-  offline: "УИХ API түр холбогдохгүй",
-  unconfigured: "УИХ API тохируулаагүй",
-};
-
-export function ApiStatusPill({ className }: { className?: string }) {
-  const [state, setState] = useState<SourceState | "loading">("loading");
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/status")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((s: { parliament?: SourceState } | null) => {
-        if (!cancelled) setState(s?.parliament ?? "offline");
-      })
-      .catch(() => {
-        if (!cancelled) setState("offline");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return (
-    <span
-      className={cn("inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-[13px] font-medium text-muted", className)}
-      role="status"
-    >
-      <span className="relative flex h-2 w-2">
-        {state === "online" ? <span className="absolute inset-0 animate-ping rounded-full bg-good opacity-60 motion-reduce:hidden" /> : null}
-        <span
-          className={cn(
-            "relative h-2 w-2 rounded-full",
-            state === "online" ? "bg-good" : state === "offline" ? "bg-gold" : "bg-line-strong",
-          )}
-        />
-      </span>
-      {statusText[state]}
-    </span>
-  );
-}
 
 // ── Дараалсан өдөр (дарахад цонх нээгдэнэ) ──
 export function StreakButton({ className, label = false }: { className?: string; label?: boolean }) {

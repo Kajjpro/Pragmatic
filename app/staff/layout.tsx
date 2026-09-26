@@ -21,6 +21,10 @@ export default async function StaffLayout({ children }: LayoutProps<"/staff">) {
     return (
       <div className="theme-light mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 bg-page px-6 text-center">
         <p className="text-[17px] font-semibold">Энэ хэсэг зөвхөн УИХ-ын Тамгын газрын ажилтанд нээлттэй.</p>
+        <p className="text-[15px] text-muted">
+          Та <span className="font-semibold text-fg">{user.email ?? "имэйлгүй бүртгэл"}</span>-ээр нэвтэрсэн байна. Ажилтан бол энэ имэйлийг
+          ажилтны жагсаалтад (STAFF_EMAILS) нэмүүлээд хуудсаа дахин ачаална уу.
+        </p>
         <Link href="/" className={buttonClass("secondary")}>
           Нүүр хуудас руу буцах
         </Link>

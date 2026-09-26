@@ -95,6 +95,21 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
 
   // Үйлдэл хийсний дараа (таамаг, виктор) дахин татахад
   const refresh = useCallback(() => setKey((k) => k + 1), []);
+
+  // Ажилтны үйлдлээр (дүн зарлах, «Тусгасан») ирсэн оноо толгойд хоцрохгүй:
+  // таб руу буцахад болон 30 секунд тутам (таб харагдаж байхад) дахин татна
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = setInterval(onVisible, 30_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(timer);
+    };
+  }, [isSignedIn, refresh]);
   const patch = useCallback(
     (next: Partial<MeData>) => setState((s) => (s.me ? { ...s, me: { ...s.me, ...next } } : s)),
     [],

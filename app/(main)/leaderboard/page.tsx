@@ -38,8 +38,6 @@ const tabs: { key: LeaderboardSection; label: string; icon: typeof Trophy; rule:
   },
 ];
 
-const medals = ["🥇", "🥈", "🥉"];
-
 export default async function LeaderboardPage({ searchParams }: PageProps<"/leaderboard">) {
   const { tab } = await searchParams;
   const current = tabs.find((t) => t.key === tab) ?? tabs[0];
@@ -57,7 +55,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
       <PageHeader
         eyebrow="Хэсэг бүрээр"
         title="Тэргүүлэгчид"
-        description="Хууль уншиж, асуултад зөв хариулсан, санал хураалтыг зөв таамагласан иргэд. Зөвхөн нэрийн эхний үгийг харуулна."
+        description="Хууль уншиж, асуултад зөв хариулсан, санал хураалтыг зөв таамагласан иргэд. Нэрийг «Нэр О.» хэлбэрээр харуулна."
       />
 
       <nav aria-label="Хэсэг" className="mt-6 flex gap-2">
@@ -92,38 +90,55 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
             }
           />
         ) : (
-          <ol className="flex flex-col gap-2">
-            {rows.map((r) => (
-              <Row key={r.userId} row={r} isMe={me?.id === r.userId} />
-            ))}
-          </ol>
+          <div className="overflow-hidden rounded-3xl border border-white/5 bg-[#161b26] p-2 shadow-lift sm:p-4">
+            <ol className="flex flex-col">
+              {rows.map((r) => (
+                <Row key={r.userId} row={r} isMe={me?.id === r.userId} />
+              ))}
+            </ol>
+          </div>
         )}
       </div>
     </Container>
   );
 }
 
+// Эхний гурван байрын дугуй: алт, мөнгө, хүрэл
+const rankCircle = ["bg-[#f5a524] text-white", "bg-[#6b7489] text-white", "bg-[#c97a3d] text-white"];
+
 function Row({ row, isMe }: { row: LeaderboardRow; isMe: boolean }) {
+  const top = row.rank <= 3;
   return (
     <li
+      title={row.detail}
       className={cn(
-        "flex items-center gap-4 rounded-xl border bg-surface px-4 py-3",
-        isMe ? "border-primary ring-1 ring-primary" : "border-line",
+        "flex items-center gap-3 rounded-2xl px-3 py-3.5 transition-colors sm:gap-5 sm:px-5 sm:py-4",
+        isMe ? "bg-white/[0.07] ring-1 ring-brand-400/60" : "hover:bg-white/[0.03]",
       )}
     >
-      <span className="w-9 shrink-0 text-center text-[20px] font-bold tabular-nums text-heading">
-        {row.rank <= 3 ? <span aria-label={`${row.rank}-р байр`}>{medals[row.rank - 1]}</span> : row.rank}
+      <span
+        aria-label={`${row.rank}-р байр`}
+        className={cn(
+          "grid h-10 w-10 shrink-0 place-items-center rounded-full text-[17px] font-bold tabular-nums sm:h-12 sm:w-12 sm:text-[19px]",
+          top ? rankCircle[row.rank - 1] : "text-[#8b93a7]",
+        )}
+      >
+        {row.rank}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[16.5px] font-semibold">
+        <p className="truncate text-[16px] font-medium text-white sm:text-[18px]">
           {row.name}
-          {isMe ? <span className="ml-2 text-[13px] font-medium text-action">(та)</span> : null}
+          {isMe ? <span className="ml-2 rounded-full bg-brand-500/25 px-2 py-0.5 text-[12px] font-semibold text-brand-200">та</span> : null}
         </p>
-        <p className="text-[13.5px] text-muted">{row.detail}</p>
+        <p className="mt-0.5 text-[12.5px] text-[#8b93a7] sm:hidden">
+          Lv {row.level} · {row.badges} тэмдэг
+        </p>
       </div>
-      <span className="shrink-0 text-right">
-        <span className="block font-serif text-[22px] font-bold tabular-nums text-heading">{row.score.toLocaleString("mn-MN")}</span>
-        <span className="block text-[12px] text-muted">оноо</span>
+      <span className="hidden w-14 shrink-0 text-right text-[16px] text-[#8b93a7] tabular-nums sm:block">Lv {row.level}</span>
+      <span className="hidden w-24 shrink-0 text-right text-[16px] text-[#8b93a7] tabular-nums sm:block">{row.badges} тэмдэг</span>
+      <span className="w-24 shrink-0 text-right tabular-nums sm:w-32">
+        <span className="text-[17px] font-semibold text-white sm:text-[19px]">{row.score.toLocaleString("en-US")}</span>
+        <span className="text-[14px] text-[#8b93a7] sm:text-[16px]"> оноо</span>
       </span>
     </li>
   );
