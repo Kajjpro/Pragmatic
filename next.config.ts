@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
     "/api/staff/**": ["./data/*.json"], // санал хураалтын hook (Dev 2-ийн precomputed.json)
     "/api/parliament/**": ["./data/snapshots/**"], // DB хоосон үеийн нөөц (npm run discover)
     "/api/drafts": ["./data/snapshots/**"],
+    // DB хоосон/хүрэхгүй үед карт, таамаг, нүүр хуудас data/-аас уншина (lib/bootstrap.ts, lib/feed.ts, lib/stats.ts)
+    "/**": ["./data/*.json", "./data/*.txt", "./data/snapshots/**"],
   },
 
   // Питчийн слайд: /pitch гэж богино бичихэд public/pitch/index.html нээгдэнэ

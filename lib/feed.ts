@@ -1,5 +1,7 @@
 // Нэвтрээгүй хүн ч харах өгөгдөл: картууд, санал хураалтууд, тэмдгийн хуваалцах мэдээлэл.
 // AI хэзээ ч дуудахгүй — зөвхөн DB-ээс уншина.
+import { ensureCards, ensureVoteEvents, readPrecomputed } from "@/lib/bootstrap";
+import { listAgendas } from "@/lib/parliament-data";
 import { prisma } from "@/lib/prisma";
 import { PERSONAS, type BillKind, type FeedCard, type Persona, type PublicBadge, type VoteEvent } from "@/lib/types";
 import type { WordPart } from "@/lib/law/types";
@@ -27,7 +29,54 @@ export function billKindOf(title: string, description: string | null): BillKind 
 
 // ALL = бүх карт. Бусад үед тэр хүмүүст эсвэл бүгдэд (ALL) зориулсан картууд.
 // Асуултын зөв хариу, тайлбарыг энд ЯВУУЛАХГҮЙ.
+// DB хоосон бол precomputed.json-оос нэг удаа бөглөнө. DB огт хүрэхгүй бол файлаас шууд уншина.
 export async function getFeed(persona: Persona): Promise<FeedCard[]> {
+  try {
+    await ensureCards();
+    return await getFeedFromDb(persona);
+  } catch (error) {
+    console.error("Картыг DB-ээс уншиж чадсангүй, data/precomputed.json-оос уншина:", error instanceof Error ? error.message : error);
+    return getFeedFromFile(persona);
+  }
+}
+
+// «demo-» id: DB-гүй үеийн карт, асуулт (оноо хадгалагдахгүй)
+export const DEMO_PREFIX = "demo-";
+
+export function getFeedFromFile(persona: Persona): FeedCard[] {
+  const data = readPrecomputed();
+  const billTitle = new Map(data.bills.map((b) => [b.key, b.title]));
+  return data.cards
+    .filter((c) => persona === "ALL" || c.personas.includes(persona) || c.personas.includes("ALL"))
+    .sort((a, b) => a.order - b.order)
+    .map((c) => ({
+      id: `${DEMO_PREFIX}${c.key}`,
+      kind: c.kind,
+      emoji: c.emoji,
+      hook: c.hook,
+      before: c.before ?? null,
+      after: c.after ?? null,
+      youMeaning: c.youMeaning,
+      sourceQuote: c.sourceQuote ?? null,
+      personas: c.personas.filter(isPersona),
+      sourceUrl: c.sourceUrl,
+      order: c.order,
+      projectId: null,
+      clauseId: null,
+      projectTitle: billTitle.get(c.projectKey) ?? null,
+      quiz: c.quiz.map((q, i) => ({ id: `${DEMO_PREFIX}${c.key}~${i}`, question: q.question, options: q.options })),
+    }));
+}
+
+// «demo-<картын key>~<асуултын дугаар>» → файл дахь асуулт (зөв хариу, тайлбартай)
+export function findFileQuestion(id: string) {
+  if (!id.startsWith(DEMO_PREFIX)) return null;
+  const [cardKey, index] = id.slice(DEMO_PREFIX.length).split("~");
+  const card = readPrecomputed().cards.find((c) => c.key === cardKey);
+  return card?.quiz[Number(index)] ?? null;
+}
+
+async function getFeedFromDb(persona: Persona): Promise<FeedCard[]> {
   const cards = await prisma.card.findMany({
     where: {
       publishedAt: { lte: new Date() },
@@ -128,7 +177,40 @@ export function toVoteEvent(e: VoteEventRow, predictionYes?: number): VoteEvent 
 
 // Нээлттэй (OPEN) нь эхэнд, дараа нь дүн гарсан (REVEALED) — шинэ нь эхэнд
 // Олны таамгийн харьцаа: санал хураалт бүрт "батлагдана" гэсэн таамгийн тоо (бодит, DB-ээс)
+// DB хоосон бол mirror-оос өмнөх санал хураалтуудыг нэг удаа нэмнэ. DB огт хүрэхгүй бол дүн гарсан байдлаар (зөвхөн харах).
 export async function getVoteEvents(): Promise<VoteEvent[]> {
+  try {
+    await ensureVoteEvents().catch((error) => console.error("Таамаг бөглөж чадсангүй:", error instanceof Error ? error.message : error));
+    return await getVoteEventsFromDb();
+  } catch (error) {
+    console.error("Санал хураалтыг DB-ээс уншиж чадсангүй, data/snapshots-оос уншина:", error instanceof Error ? error.message : error);
+    const agendas = await listAgendas({ q: "", limit: 500, offset: 0 });
+    return agendas.items
+      .filter((a) => a.finalVote)
+      .slice(0, 8)
+      .map((a) => {
+        const v = a.finalVote!;
+        return {
+          id: `${DEMO_PREFIX}${a.agendaCode}`,
+          title: a.title,
+          hook: "Энэ асуудлыг УИХ батлах уу?",
+          isReplay: true,
+          status: "REVEALED" as const,
+          closesAt: null,
+          actualSupport: v.support,
+          actualOppose: v.oppose,
+          actualTotal: v.total,
+          passed: v.supportMajority,
+          projectId: null,
+          predictionCount: 0,
+          predictionYes: 0,
+          revealedAt: v.votedAt,
+        };
+      });
+  }
+}
+
+async function getVoteEventsFromDb(): Promise<VoteEvent[]> {
   const [events, yes] = await Promise.all([
     prisma.voteEvent.findMany({
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],

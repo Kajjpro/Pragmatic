@@ -1,65 +1,52 @@
 // Нүүр хуудасны "бодит тоо". Зөвхөн бодит эх сурвалжаас; авч чадахгүй бол null (хуудсан дээр нуугдана).
-// 10 минут тутам шинэчилнэ. Эх сурвалж түр унавал сүүлийн амжилттай утгыг хадгална.
+// УИХ-ын өгөгдлийг манай sync-ийн хүснэгтээс (хоосон бол data/snapshots/) уншина — гадны API-г шууд дуудахгүй.
 import { unstable_cache } from "next/cache";
-import { getAllProjects } from "@/lib/lawforum";
+import { listAgendas, listDrafts, type AgendaItem, type DraftItem } from "@/lib/parliament-data";
 import { prisma } from "@/lib/prisma";
 
 export type LiveStats = {
-  activeProjects: number | null; // LawForum дээр идэвхтэй төсөл
-  citizenComments: number | null; // Хариу-д иргэдийн өгсөн санал
-  lastVoteDate: string | null; // УИХ-ын хамгийн сүүлийн санал хураалтын дүн (манай sync)
+  agendaCount: number | null; // УИХ-ын хэлэлцэх асуудлын тоо (ParliamentAPI)
+  draftCount: number | null; // LawForum-д нийтлэгдсэн хуулийн төслийн тоо
+  lastVoteDate: string | null; // Хамгийн сүүлийн санал хураалтын огноо
+  citizenComments: number | null; // Хариу-д иргэдийн өгсөн санал (0 бол null)
+  recentVotes: AgendaItem[]; // Сүүлд эцэслэн санал хураасан асуудлууд (зөвхөн тоо)
+  recentDrafts: DraftItem[]; // LawForum-д сүүлд нийтлэгдсэн төслүүд
   updatedAt: string;
 };
 
-const REVALIDATE_SECONDS = 600;
-
-// Сүүлийн амжилттай утгууд (серверийн санах ойд)
-const lastGood: Partial<Record<"activeProjects" | "citizenComments" | "lastVoteDate", number | string>> = {};
-
-async function countActiveProjects(): Promise<number> {
-  const projects = await getAllProjects();
-  return projects.filter((p) => p.isActive).length;
-}
-
-async function countCitizenComments(): Promise<number> {
-  return prisma.comment.count();
-}
-
-async function findLastVoteDate(): Promise<string | null> {
-  const last = await prisma.voteEvent.findFirst({
-    where: { status: "REVEALED", revealedAt: { not: null } },
-    orderBy: { revealedAt: "desc" },
-    select: { revealedAt: true },
-  });
-  return last?.revealedAt?.toISOString() ?? null;
-}
-
-// Нэг эх сурвалжийг кэштэй дуудна. Алдаа гарвал кэшлэхгүй (throw), доор сүүлийн сайн утгыг өгнө.
-const cachedActiveProjects = unstable_cache(countActiveProjects, ["stats-active-projects"], { revalidate: REVALIDATE_SECONDS });
-const cachedCitizenComments = unstable_cache(countCitizenComments, ["stats-citizen-comments"], { revalidate: REVALIDATE_SECONDS });
-const cachedLastVoteDate = unstable_cache(findLastVoteDate, ["stats-last-vote"], { revalidate: REVALIDATE_SECONDS });
-
-async function safe<T extends number | string>(key: keyof typeof lastGood, load: () => Promise<T | null>): Promise<T | null> {
+// Алдаа гарвал хуудсыг унагахгүй — тэр хэсэг л нуугдана
+async function safe<T>(load: () => Promise<T>, fallback: T): Promise<T> {
   try {
-    const value = await load();
-    if (value !== null) lastGood[key] = value;
-    return value;
-  } catch {
-    return (lastGood[key] as T | undefined) ?? null;
+    return await load();
+  } catch (error) {
+    console.error("Нүүр хуудасны статистик:", error instanceof Error ? error.message : error);
+    return fallback;
   }
 }
 
-export async function getLiveStats(): Promise<LiveStats> {
-  const [activeProjects, comments, lastVoteDate] = await Promise.all([
-    safe("activeProjects", cachedActiveProjects),
-    safe("citizenComments", cachedCitizenComments),
-    safe("lastVoteDate", cachedLastVoteDate),
+async function loadStats(): Promise<LiveStats> {
+  const [agendas, drafts, comments] = await Promise.all([
+    safe(() => listAgendas({ q: "", limit: 30, offset: 0 }), null),
+    safe(() => listDrafts({ q: "", limit: 3, offset: 0, active: false }), null),
+    safe(() => prisma.comment.count(), 0),
   ]);
+
+  const items = agendas?.items ?? [];
+  const lastVoteDate = items.reduce<string | null>(
+    (last, a) => (a.lastVotedAt && (!last || a.lastVotedAt > last) ? a.lastVotedAt : last),
+    null,
+  );
+
   return {
-    activeProjects,
-    // 0 санал бол "тоо" гэж харуулах зүйлгүй — нуух
-    citizenComments: comments && comments > 0 ? comments : null,
+    agendaCount: agendas && agendas.total > 0 ? agendas.total : null,
+    draftCount: drafts && drafts.total > 0 ? drafts.total : null,
     lastVoteDate,
+    citizenComments: comments > 0 ? comments : null,
+    recentVotes: items.filter((a) => a.finalVote).slice(0, 3),
+    recentDrafts: drafts?.items ?? [],
     updatedAt: new Date().toISOString(),
   };
 }
+
+// 10 минут тутам шинэчилнэ
+export const getLiveStats = unstable_cache(loadStats, ["home-live-stats-v2"], { revalidate: 600 });

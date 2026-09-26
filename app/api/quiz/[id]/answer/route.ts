@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUser, handleError, HttpError } from "@/lib/auth";
-import { toOptions } from "@/lib/feed";
+import { findFileQuestion, toOptions } from "@/lib/feed";
 import { int, readBody } from "@/lib/law/http";
 import { awardQuizAnswer } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
@@ -12,6 +12,21 @@ export async function POST(req: Request, ctx: RouteContext<"/api/quiz/[id]/answe
   try {
     const { id } = await ctx.params;
     const body = await readBody(req);
+
+    // DB-гүй үеийн карт (data/precomputed.json) — хариуг харуулна, оноо хадгалахгүй
+    const fileQuestion = findFileQuestion(id);
+    if (fileQuestion) {
+      const chosen = int(body, "chosenIndex", { min: 0, max: fileQuestion.options.length - 1 });
+      const demo: QuizAnswerResult = {
+        correct: chosen === fileQuestion.correctIndex,
+        correctIndex: fileQuestion.correctIndex,
+        explanation: fileQuestion.explanation,
+        pointsAwarded: 0,
+        saved: false,
+        points: null,
+      };
+      return NextResponse.json(demo);
+    }
 
     const question = await prisma.quizQuestion.findUnique({
       where: { id },

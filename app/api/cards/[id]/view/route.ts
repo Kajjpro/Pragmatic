@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUser, handleError, HttpError } from "@/lib/auth";
+import { DEMO_PREFIX } from "@/lib/feed";
 import { awardCardView } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import type { CardViewResult } from "@/lib/types";
@@ -9,6 +10,12 @@ import type { CardViewResult } from "@/lib/types";
 export async function POST(_req: Request, ctx: RouteContext<"/api/cards/[id]/view">) {
   try {
     const { id } = await ctx.params;
+
+    // DB-гүй үеийн карт — урсгал тасрахгүй, оноо хадгалахгүй
+    if (id.startsWith(DEMO_PREFIX)) {
+      const demo: CardViewResult = { saved: false, points: null, streak: null, pointsAwarded: 0, newBadges: [] };
+      return NextResponse.json(demo);
+    }
 
     const card = await prisma.card.findUnique({ where: { id }, select: { id: true } });
     if (!card) throw new HttpError(404, "Карт олдсонгүй");
