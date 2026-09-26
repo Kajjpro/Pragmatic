@@ -164,8 +164,8 @@ test("sync discover: hook-гүй ч ParliamentAPI-ийн сүүлийн, сан�
       ];
     },
     async getAgendaVoteList(code: string) {
-      if (code === "20250200075") return [vote(50, 10, true)];
-      if (code === "A1") return [vote(70, 10, true)];
+      if (code === "20250200075") return [vote(code, 50, 10, true)];
+      if (code === "A1") return [vote(code, 70, 10, true)];
       return [];
     },
   };

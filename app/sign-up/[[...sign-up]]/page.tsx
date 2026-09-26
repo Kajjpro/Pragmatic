@@ -11,7 +11,7 @@ export default function SignUpPage() {
       </header>
       <main className="flex flex-1 items-center justify-center p-6">
         <h1 className="sr-only">Бүртгүүлэх</h1>
-        <SignUp />
+        <SignUp fallbackRedirectUrl="/after-sign-in" />
       </main>
     </div>
   );
