@@ -20,3 +20,8 @@ export const STREAK_BADGE_DAYS = 7;
 
 // Өдрийн уншлагын зорилго (зөвхөн дэлгэцийн зорилт — оноонд нөлөөгүй)
 export const DAILY_CARD_GOAL = 3;
+
+// Түвшин (Lv): оноо өсөх тусам удаан өснө. 0–9 → Lv 1, 10 → Lv 2, 40 → Lv 3, 90 → Lv 4, 160 → Lv 5 …
+export function levelFor(points: number): number {
+  return Math.floor(Math.sqrt(Math.max(points, 0) / 10)) + 1;
+}

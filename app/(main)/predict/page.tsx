@@ -8,7 +8,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { ListSkeleton } from "@/components/ui/page-loading";
 import { PredictCard } from "@/components/predict/predict-card";
-import { ApiStatusPill } from "@/components/shell/header-stats";
 import { fetchVoteEvents } from "@/components/feed/feed-data";
 import { useMe } from "@/components/shell/me-context";
 import { POINTS, SUPPORT_GUESS_POINTS } from "@/lib/points-rules";
@@ -171,7 +170,6 @@ export default function PredictPage() {
             <p className="mt-2 text-[14.5px] text-muted">
               Дүнг УИХ-ын ParliamentAPI-ийн <code className="rounded bg-surface-2 px-1 text-[13px]">getAgendaVoteList</code>-оос авна.
             </p>
-            <ApiStatusPill className="mt-3" />
           </section>
         </aside>
       </div>

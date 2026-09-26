@@ -52,18 +52,18 @@
 }
 
 @theme {
-  /* ── Хуучин "brand" шатлал → албан ёсны нүүрс-саарал (хөх өнгө огт хэрэглэхгүй) ── */
-  --color-brand-50: #f9fafb;
-  --color-brand-100: #f3f4f6;
-  --color-brand-200: #e5e7eb;
-  --color-brand-300: #d1d5db;
-  --color-brand-400: #9ca3af;
-  --color-brand-500: #4b5563;
-  --color-brand-600: #1f2937;
-  --color-brand-700: #111827;
-  --color-brand-800: #0c0d0f;
-  --color-brand-900: #0a0a0b;
-  --color-brand-950: #070708;
+  /* ── Хуучин "brand" шатлал → индиго (үндсэн өнгөтэй ижил) ── */
+  --color-brand-50: #eef0ff;
+  --color-brand-100: #e0e3ff;
+  --color-brand-200: #c7cbfe;
+  --color-brand-300: #a5abfc;
+  --color-brand-400: #8187f8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
 
   /* ── Хуучин "teal" → намуухан маргад ногоон (амжилт, тусгагдсан) ── */
   --color-teal-50: #ecfdf5;
@@ -98,27 +98,27 @@
   --color-bad-800: #991b1b;
 
   /* ── Текст ба саарал ── */
-  --color-ink-950: #0c0d0f;
-  --color-ink-900: #111827;
-  --color-ink-700: #374151;
-  --color-ink-600: #4b5563;
-  --color-ink-500: #6b7280;
-  --color-ink-300: #d1d5db;
-  --color-ink-200: #e5e7eb;
-  --color-ink-100: #f3f4f6;
-  --color-ink-50: #f9fafb;
+  --color-ink-950: #111729;
+  --color-ink-900: #1a2033;
+  --color-ink-700: #3a4257;
+  --color-ink-600: #5a6378;
+  --color-ink-500: #737c91;
+  --color-ink-300: #cfd4e2;
+  --color-ink-200: #e4e7f0;
+  --color-ink-100: #f0f2f9;
+  --color-ink-50: #f5f6fb;
 
   /* ── Хэлбэр: зөөлөн булан, нимгэн хүрээ, бүдэг сүүдэр ── */
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-  --radius-3xl: 20px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
 
-  --shadow-soft: 0 1px 2px rgb(17 24 39 / 0.04);
-  --shadow-card: 0 1px 2px rgb(17 24 39 / 0.04), 0 1px 3px rgb(17 24 39 / 0.06);
-  --shadow-lift: 0 10px 30px -8px rgb(17 24 39 / 0.14), 0 2px 6px rgb(17 24 39 / 0.05);
-  --shadow-brand: 0 1px 2px rgb(17 24 39 / 0.08);
+  --shadow-soft: 0 1px 2px rgb(30 27 75 / 0.04);
+  --shadow-card: 0 1px 2px rgb(30 27 75 / 0.04), 0 4px 14px -6px rgb(30 27 75 / 0.08);
+  --shadow-lift: 0 16px 36px -12px rgb(79 70 229 / 0.22), 0 2px 6px rgb(30 27 75 / 0.05);
+  --shadow-brand: 0 6px 16px -6px rgb(79 70 229 / 0.45);
   --shadow-point: 0 1px 2px rgb(17 24 39 / 0.08);
 
   --animate-fade-in: fade-in 0.18s ease-out both;
@@ -151,38 +151,39 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
-/* ── Зөвхөн гэрэл горим: цагаан давамгай, албан ёсны (бараан горим, хөх өнгө байхгүй) ── */
+/* ── Гэрэл горим: зөөлөн дэвсгэр, цагаан карт, нэг индиго өнгө ── */
 :root,
 .theme-light {
   color-scheme: light;
-  --page: #f9fafb;
+  /* Зөөлөн, намуухан өнгө: бүдэг хөхөвтөр саарал дэвсгэр + нэг индиго өнгө (товч, холбоос, идэвхтэй цэс) */
+  --page: #f5f6fb;
   --surface: #ffffff;
-  --surface-2: #f3f4f6;
-  --fg: #111827;
-  --muted: #4b5563;
-  --line: #e5e7eb;
-  --line-strong: #d1d5db;
-  --heading: #111827;
-  --primary: #1f2937;
-  --primary-hover: #111827;
+  --surface-2: #f0f2f9;
+  --fg: #1a2033;
+  --muted: #5a6378;
+  --line: #e4e7f0;
+  --line-strong: #cfd4e2;
+  --heading: #111729;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
   --on-primary: #ffffff;
-  --action: #1f2937;
-  --action-bg: #f3f4f6;
-  --del-fg: #b91c1c;
-  --del-bg: #fee2e2;
+  --action: #4338ca;
+  --action-bg: #eef0ff;
+  --del-fg: #be123c;
+  --del-bg: #ffe4ea;
   --add-fg: #047857;
-  --add-bg: #d1fae5;
-  --gold: #d97706;
+  --add-bg: #d8f5e8;
+  --gold: #f59e0b;
   --gold-fg: #b45309;
-  --gold-bg: #fffbeb;
-  --good: #059669;
+  --gold-bg: #fff7e6;
+  --good: #10b981;
   --good-fg: #047857;
-  --good-bg: #ecfdf5;
-  --bad: #dc2626;
-  --bad-fg: #b91c1c;
-  --bad-bg: #fef2f2;
+  --good-bg: #ecfbf4;
+  --bad: #e11d48;
+  --bad-fg: #be123c;
+  --bad-bg: #fff1f3;
   --warn-fg: #b45309;
-  --warn-bg: #fffbeb;
+  --warn-bg: #fff7e6;
 }
 
 html,
