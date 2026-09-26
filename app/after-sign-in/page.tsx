@@ -1,23 +1,10 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { getUser } from "@/lib/auth";
 
+// Нэвтэрсний дараа: ажилтан бол шууд /staff, иргэн бол нүүр хуудас.
+// getUser() хэрэглэгчийг үүсгэж, ажилтны эрхийг (имэйлээр) шалгана.
 export default async function AfterSignInPage() {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-
-  const clerkUser = await currentUser();
-
-  const name =
-    [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") ||
-    null;
-  const email = clerkUser?.primaryEmailAddress?.emailAddress ?? null;
-
-  await prisma.user.upsert({
-    where: { clerkId: userId },
-    update: { name, email },
-    create: { clerkId: userId, name, email },
-  });
-
-  redirect("/");
+  const user = await getUser();
+  if (!user) redirect("/sign-in");
+  redirect(user.role === "STAFF" ? "/staff" : "/");
 }

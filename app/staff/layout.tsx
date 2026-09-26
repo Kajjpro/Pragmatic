@@ -14,7 +14,7 @@ export default async function StaffLayout({ children }: LayoutProps<"/staff">) {
   const user = await getUser();
 
   // 2. Нэвтрээгүй бол нэвтрэх хуудас руу шилжүүлнэ
-  if (!user) redirect("/sign-in");
+  if (!user) redirect("/sign-in?redirect_url=/staff");
 
   // 3. Ажилтан биш бол товч мэдэгдэл харуулна
   if (user.role !== "STAFF") {

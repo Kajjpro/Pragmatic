@@ -25,17 +25,39 @@ function isStaffEmail(email?: string | null) {
   return list.includes(e) || (!!domain && e.endsWith("@" + domain));
 }
 
+// Ажилтан эсэх: STAFF_EMAILS/домэйн, ЭСВЭЛ DB-д ижил имэйлтэй STAFF мөр байвал (Neon дээр гараар STAFF болгосон ч ажиллана)
+async function shouldBeStaff(email?: string | null, exceptId?: string) {
+  if (!email) return false;
+  if (isStaffEmail(email)) return true;
+  const staffRow = await prisma.user.findFirst({
+    where: {
+      role: "STAFF",
+      email: { equals: email, mode: "insensitive" },
+      ...(exceptId ? { id: { not: exceptId } } : {}),
+    },
+    select: { id: true },
+  });
+  return !!staffRow;
+}
+
 export async function getUser() {
   const { userId } = await auth();
   if (!userId) return null;
 
   const existing = await prisma.user.findUnique({ where: { clerkId: userId } });
   if (existing) {
-    // Жагсаалтад дараа нэмэгдсэн бол ажилтан болгоно
-    if (existing.role === "CITIZEN" && isStaffEmail(existing.email)) {
+    if (existing.role === "STAFF") return existing;
+    // Имэйл хоосон бол Clerk-ээс авна
+    let email = existing.email;
+    if (!email) {
+      const cu = await currentUser();
+      email = cu?.primaryEmailAddress?.emailAddress ?? cu?.emailAddresses[0]?.emailAddress ?? null;
+    }
+    // Жагсаалтад дараа нэмэгдсэн, эсвэл DB-д STAFF болгосон бол ажилтан болгоно
+    if (await shouldBeStaff(email, existing.id)) {
       return prisma.user.update({
         where: { id: existing.id },
-        data: { role: "STAFF" },
+        data: { role: "STAFF", email },
       });
     }
     return existing;
@@ -60,7 +82,7 @@ export async function getUser() {
         data: {
           clerkId: userId,
           name: seeded.name ?? name,
-          role: seeded.role === "STAFF" || isStaffEmail(email) ? "STAFF" : "CITIZEN",
+          role: seeded.role === "STAFF" || (await shouldBeStaff(email, seeded.id)) ? "STAFF" : "CITIZEN",
         },
       });
     }
@@ -73,7 +95,7 @@ export async function getUser() {
       clerkId: userId,
       name,
       email,
-      role: isStaffEmail(email) ? "STAFF" : "CITIZEN",
+      role: (await shouldBeStaff(email)) ? "STAFF" : "CITIZEN",
     },
   });
 }

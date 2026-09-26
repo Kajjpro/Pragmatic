@@ -11,7 +11,7 @@ export default function SignInPage() {
       </header>
       <main className="flex flex-1 items-center justify-center p-6">
         <h1 className="sr-only">Нэвтрэх</h1>
-        <SignIn />
+        <SignIn fallbackRedirectUrl="/after-sign-in" />
       </main>
     </div>
   );
