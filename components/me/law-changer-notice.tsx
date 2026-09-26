@@ -35,7 +35,7 @@ export function LawChangerNotice({ badge, onClose }: { badge: Badge; onClose: ()
           <div className="mt-4 flex flex-wrap gap-3">
             <ShareButton
               url={`/b/${badge.id}`}
-              text="Миний санал хуулийн төсөлд тусгагдлаа — Хариу платформ."
+              text="Миний санал хуулийн төсөлд тусгагдлаа — Parlagmatic платформ."
               className={buttonClass("primary", "sm")}
             />
             <Link href={`/b/${badge.id}`} className={buttonClass("secondary", "sm")}>

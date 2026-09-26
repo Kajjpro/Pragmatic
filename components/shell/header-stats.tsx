@@ -89,7 +89,6 @@ export function PointsBadge({ className }: { className?: string }) {
     prev.current = points;
     if (before === null || points <= before) return;
     const next = { n: points - before, key: Date.now() };
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- онооны өөрчлөлтөд хариу үзүүлэх товч мэдэгдэл
     setGain(next);
     const t = setTimeout(() => setGain((g) => (g?.key === next.key ? null : g)), 1600);
     return () => clearTimeout(t);

@@ -11,7 +11,7 @@ export function ShareButton({ url, text, className }: { url: string; text: strin
     const full = new URL(url, window.location.origin).href;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Хариу", text, url: full });
+        await navigator.share({ title: "Parlagmatic", text, url: full });
         return;
       } catch {
         // Хэрэглэгч болиулсан — доорх хуулах руу шилжинэ

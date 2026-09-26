@@ -53,7 +53,7 @@ export function LawChangerHero({ badges }: { badges: Badge[] }) {
             <Link href={`/b/${latest.id}`} className={buttonClass("primary", "sm")}>
               Батламж харах
             </Link>
-            <ShareButton url={`/b/${latest.id}`} text="Миний санал хуулийн төсөлд тусгагдлаа — Хариу платформ." className={buttonClass("secondary", "sm")} />
+            <ShareButton url={`/b/${latest.id}`} text="Миний санал хуулийн төсөлд тусгагдлаа — Parlagmatic платформ." className={buttonClass("secondary", "sm")} />
           </div>
         </div>
       </div>

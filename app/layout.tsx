@@ -17,18 +17,18 @@ const inter = Inter({
   display: "swap",
 });
 
-const TITLE = "Хариу — Хууль таны амьдралыг өөрчилдөг";
+const TITLE = "Parlagmatic — Хууль таны амьдралыг өөрчилдөг";
 const DESCRIPTION =
   "Улсын Их Хурал хуульд юу өөрчилж байгааг энгийнээр ойлгож, санал хураалтыг дагаж, саналаа өгөх платформ. Эх сурвалж: LawForum, УИХ-ын санал хураалт.";
 
 export const metadata: Metadata = {
   // Хуваалцах үеийн OG зургийн замыг бүтэн URL болгоно
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  applicationName: "Хариу",
-  title: { default: TITLE, template: "%s · Хариу" },
+  applicationName: "Parlagmatic",
+  title: { default: TITLE, template: "%s · Parlagmatic" },
   description: DESCRIPTION,
   openGraph: {
-    siteName: "Хариу",
+    siteName: "Parlagmatic",
     locale: "mn_MN",
     type: "website",
     title: TITLE,

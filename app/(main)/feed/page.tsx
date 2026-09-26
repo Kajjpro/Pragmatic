@@ -143,7 +143,6 @@ export default function FeedPage() {
   );
 
   const points = override?.points ?? me?.points ?? progress?.points ?? 0;
-  const streak = override?.streak ?? me?.streak ?? progress?.streak ?? 0;
 
   const viewedIds = me ? (me.viewedCardIdsToday ?? []) : (progress?.viewedToday ?? []);
 
