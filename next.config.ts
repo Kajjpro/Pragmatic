@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
     "/api/badges/**": ["./assets/fonts/**"], // тэмдгийн зурагт кирилл фонт
     "/api/staff/**": ["./data/*.json"], // санал хураалтын hook (Dev 2-ийн precomputed.json)
   },
+
+  // Питчийн слайд: /pitch гэж богино бичихэд public/pitch/index.html нээгдэнэ
+  async rewrites() {
+    return [{ source: "/pitch", destination: "/pitch/index.html" }];
+  },
 };
 
 export default nextConfig;
