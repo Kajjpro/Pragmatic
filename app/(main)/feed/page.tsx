@@ -15,8 +15,10 @@ import { ErrorState } from "@/components/ui/error-state";
 import { ListSkeleton } from "@/components/ui/page-loading";
 import { Button } from "@/components/ui/button";
 import { StreakPanel } from "@/components/feed/streak-panel";
-import { CheckCircle2, Circle } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, Circle, Trophy } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { POINTS } from "@/lib/points-rules";
 
 // ① Өнөөдрийн хууль. Өгөгдөл: GET /api/feed (DB-ээс, AI дуудахгүй).
 // Оноо, дараалсан өдөр: нэвтэрсэн бол сервер эрх мэдэлтэй; зочин бол төхөөрөмж дээр.
@@ -134,12 +136,15 @@ export default function FeedPage() {
       }
       const p = progressRef.current;
       if (!p || !result.correct) return;
-      const { next, gained } = recordQuizAnswer(p, questionId, 3);
+      // Тэр картын асуултад анх зөв хариулж байгаа бол картыг уншсаны оноо нэмнэ
+      const card = loaded?.cards.find((c) => c.quiz.some((q) => q.id === questionId));
+      const firstOnCard = !card?.quiz.some((q) => q.id !== questionId && p.answered.includes(q.id));
+      const { next, gained } = recordQuizAnswer(p, questionId, POINTS.QUIZ_CORRECT + (firstOnCard ? POINTS.CARD_VIEW : 0));
       progressRef.current = next;
       setProgress(next);
       showGain(gained);
     },
-    [showGain, patch],
+    [showGain, patch, loaded],
   );
 
   const points = override?.points ?? me?.points ?? progress?.points ?? 0;
@@ -156,6 +161,9 @@ export default function FeedPage() {
           <p className="mt-1 max-w-xl text-[15.5px] text-muted">
             Өмнө нь ямар байсан, ямар болох, чамд юу хамаатайг гурван алхамаар.
           </p>
+          <Link href="/leaderboard?tab=feed" className="mt-2 inline-flex items-center gap-1.5 text-[14.5px] font-semibold text-action underline underline-offset-2">
+            <Trophy aria-hidden className="h-4 w-4" /> Тэргүүлэгчид
+          </Link>
         </div>
         <div className="flex items-center gap-2 text-[14px]">
           <span className="text-muted">Сонирхол:</span>

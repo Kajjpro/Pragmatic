@@ -113,7 +113,7 @@ export function StreakModal({ open, onClose, score }: { open: boolean; onClose: 
           </li>
           <li className="flex gap-2.5">
             <Sparkles aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
-            Карт бүрийг өдөрт анх үзэхэд +{POINTS.CARD_VIEW}, асуултад анхны оролдлогоор зөв хариулбал +{POINTS.QUIZ_CORRECT} оноо.
+            Асуултад анхны оролдлогоор зөв хариулбал +{POINTS.QUIZ_CORRECT}, тэр картыг уншсаны +{POINTS.CARD_VIEW} оноо. Зөвхөн гүйлгэхэд оноо өгөхгүй.
           </li>
           <li className="flex gap-2.5">
             <CalendarCheck aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted" />

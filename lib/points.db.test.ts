@@ -144,16 +144,17 @@ after(async () => {
   await c.end();
 });
 
-test("card view: +1 once per card per day, even when requests arrive at the same time", { skip }, async () => {
+test("card view: swiping alone gives no points, one view row per card per day", { skip }, async () => {
   const results = await Promise.all(
     Array.from({ length: 5 }, () => points.awardCardView(s.citizen, s.cardStudent)),
   );
-  assert.equal(results.filter((r) => r.pointsAwarded === 1).length, 1);
-  assert.equal(await pointsOf(s.citizen), 1);
+  assert.ok(results.every((r) => r.pointsAwarded === 0));
+  assert.equal(await pointsOf(s.citizen), 0);
+  assert.equal(await prisma.cardView.count({ where: { userId: s.citizen, cardId: s.cardStudent } }), 1);
 
   const second = await points.awardCardView(s.citizen, s.cardDriver);
-  assert.equal(second.pointsAwarded, 1);
-  assert.equal(second.points, 2);
+  assert.equal(second.pointsAwarded, 0);
+  assert.equal(second.points, 0);
   assert.equal(second.streak, 1);
   assert.deepEqual(second.newBadges, []);
 });
@@ -181,7 +182,7 @@ test("streak: a missed day starts again from 1", { skip }, async () => {
   assert.equal(r.streak, 1);
 });
 
-test("quiz: +3 only when the first answer is correct", { skip }, async () => {
+test("quiz: +3 only when the first answer is correct, +1 read bonus on the card's first correct answer", { skip }, async () => {
   const before = await pointsOf(s.citizen);
 
   const wrong = await points.awardQuizAnswer(s.citizen, s.q1, 0);
@@ -195,13 +196,14 @@ test("quiz: +3 only when the first answer is correct", { skip }, async () => {
   assert.equal(retry!.pointsAwarded, 0);
   assert.equal(retry!.firstTry, false);
 
+  // q1-д эхлээд буруу хариулсан тул q2 нь энэ картын анхны зөв хариулт → +3 ба уншсаны +1
   const right = await points.awardQuizAnswer(s.citizen, s.q2, 0);
-  assert.equal(right!.pointsAwarded, 3);
-  assert.equal(right!.points, before + 3);
+  assert.equal(right!.pointsAwarded, 3 + 1);
+  assert.equal(right!.points, before + 4);
 
   const twice = await points.awardQuizAnswer(s.citizen, s.q2, 0);
   assert.equal(twice!.pointsAwarded, 0);
-  assert.equal(await pointsOf(s.citizen), before + 3);
+  assert.equal(await pointsOf(s.citizen), before + 4);
 
   assert.equal(await points.awardQuizAnswer(s.citizen, "no-such-question", 0), null);
 });

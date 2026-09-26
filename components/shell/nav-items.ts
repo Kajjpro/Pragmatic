@@ -1,7 +1,8 @@
-import { Home, BookOpenText, Scale, Vote, BadgeCheck, type LucideIcon } from "lucide-react";
+import { Home, BookOpenText, Scale, Vote, BadgeCheck, Trophy, type LucideIcon } from "lucide-react";
 
 // Үндсэн цэс: гурван гол боломж (①②⑥) төвд. Гар утсанд short нэрийг доод цэсэнд харуулна.
-export type NavItem = { href: string; label: string; short: string; icon: LucideIcon; hero?: boolean };
+// desktopOnly: гар утасны доод цэсэнд багтахгүй (5 л байр) — тэнд /feed, /predict хуудаснаас холбоосоор орно
+export type NavItem = { href: string; label: string; short: string; icon: LucideIcon; hero?: boolean; desktopOnly?: boolean };
 
 export const navItems: NavItem[] = [
   { href: "/", label: "Нүүр", short: "Нүүр", icon: Home },
@@ -9,6 +10,7 @@ export const navItems: NavItem[] = [
   { href: "/predict", label: "Таамаг", short: "Таамаг", icon: Vote, hero: true },
   { href: "/me", label: "Би хууль өөрчилсөн", short: "Нөлөө", icon: BadgeCheck, hero: true },
   { href: "/bills", label: "Хуулийн төслүүд", short: "Төслүүд", icon: Scale },
+  { href: "/leaderboard", label: "Тэргүүлэгчид", short: "Тэргүүлэгчид", icon: Trophy, desktopOnly: true },
 ];
 
 // "/" зөвхөн яг таарвал идэвхтэй; бусад нь дэд хуудсыг хамруулна

@@ -93,15 +93,15 @@ export function recordCardView(
     streakChanged = true;
   }
 
+  // Зөвхөн гүйлгэхэд оноо өгөхгүй — уншсаны +1-ийг асуултад анх зөв хариулахад өгнө (lib/points.ts-тэй ижил)
   const next: Progress = {
     ...p,
-    points: p.points + 1,
     streak,
     lastActiveDay: day,
     viewedToday: [...p.viewedToday, cardId],
   };
   writeProgress(next);
-  return { next, gained: 1, streakChanged };
+  return { next, gained: 0, streakChanged };
 }
 
 // Викторын зөв хариулт: асуулт тутамд нэг л удаа оноо өгнө.
