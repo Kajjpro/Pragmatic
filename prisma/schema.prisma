@@ -359,3 +359,82 @@ model Badge {
 
   @@index([userId])
 }
+
+// ───────────── Эх сурвалжийн хуулбар: УИХ-ын ParliamentAPI, LawForum (npm run vote -- sync) ─────────────
+// Гадны API-ийн өгөгдлийг өөрчлөхгүйгээр хадгална. /api/parliament/*, /api/drafts эндээс уншина (lib/parliament-data.ts).
+// Манай бүтээгдэхүүний Project, VoteEvent-ээс тусдаа — эдгээр нь зөвхөн эх сурвалжийн хуулбар.
+
+// Хэлэлцэх асуудал (getAgendaList). finalVoteId = эцсийн (батлах) санал хураалт — lib/parliament.ts finalReadingVote.
+model ParliamentAgenda {
+  agendaCode  String           @id // 11 оронтой
+  title       String
+  voteCount   Int              @default(0)
+  lastVotedAt DateTime?
+  finalVoteId String? // ParliamentVote.customId. Олдоогүй бол null — таамаглахгүй
+  votes       ParliamentVote[]
+  syncedAt    DateTime         @updatedAt
+
+  @@index([lastVotedAt])
+}
+
+// Санал хураалт (getAgendaVoteList). Зөвхөн тоо — гишүүн бүрийн саналыг хадгалахгүй (CLAUDE.md: төвийг сахих).
+// API нэг санал хураалтыг хэд хэдэн асуудалд буцаадаг тул (agendaCode, customId) хосоороо давтагдашгүй.
+model ParliamentVote {
+  id         String           @id @default(cuid())
+  agendaCode String
+  agenda     ParliamentAgenda @relation(fields: [agendaCode], references: [agendaCode], onDelete: Cascade)
+  customId   String // "549_202512310038117" = хуралдааны id + санал хураалтын дугаар
+  meetingId  Int?
+  name       String // санал хураалтын асуулт
+  voteType   String // "Хэлэлцэх эсэх", "Эцэслэн батлах", ...
+  support    Int // zovshooron — зөвшөөрсөн
+  oppose     Int // tatgalzsan — татгалзсан
+  total      Int // niit
+  present    Int? // irts — ирц
+  votedAt    DateTime?
+  syncedAt   DateTime         @updatedAt
+
+  @@unique([agendaCode, customId])
+  @@index([meetingId])
+}
+
+// Хуралдаан (getMeetings)
+model ParliamentMeeting {
+  id          Int       @id // ParliamentAPI-ийн хуралдааны id
+  title       String
+  description String?
+  startsAt    DateTime? // товлосон цаг
+  openedAt    DateTime? // нээгдсэн цаг
+  endedAt     DateTime?
+  syncedAt    DateTime  @updatedAt
+
+  @@index([startsAt])
+}
+
+// УИХ-ын гишүүд (Service getMembers). Энэ эрхээр API хоосон жагсаалт буцаадаг — ирвэл хадгална.
+model ParliamentMember {
+  key      String   @id // имэйл, id эсвэл нэр
+  name     String?
+  email    String?
+  data     Json // API-ийн анхны мөр
+  syncedAt DateTime @updatedAt
+}
+
+// LawForum-ын БҮХ хуулийн төсөл (/api/v1/projects), идэвхгүй нь ч.
+// Project = манай бүтээгдэхүүний төсөл (/bills: харьцуулалт, санал, карт); LawDraft = эх сурвалжийн жагсаалтын хуулбар.
+model LawDraft {
+  id            Int       @id // LawForum-ын төслийн id
+  title         String
+  projectNumber String?
+  typeId        Int?
+  typeTitle     String?
+  categoryId    Int?
+  categoryTitle String?
+  status        Int?
+  stage         Int?
+  isActive      Boolean   @default(false)
+  publishedAt   DateTime?
+  syncedAt      DateTime  @updatedAt
+
+  @@index([publishedAt])
+}

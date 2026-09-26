@@ -17,11 +17,19 @@ let voteEvents: typeof import("./vote-events");
 let parliament: typeof import("./parliament");
 let seed: typeof import("./seed");
 
-const vote = (support: number, oppose: number, isFinalReading: boolean): AgendaVote => ({
+// Эцсийн санал хураалт = эцсийн шатны "...төслийг эцэслэн батлах" санал (lib/parliament.ts finalReadingVote)
+let voteSeq = 0;
+const vote = (code: string, support: number, oppose: number, isFinalReading: boolean): AgendaVote => ({
+  customId: `1_${++voteSeq}`,
+  agendaCode: code,
+  agendaTitle: `Төсөл ${code}`,
+  meetingId: 1,
+  name: isFinalReading ? `Төсөл ${code} төслийг эцэслэн батлах санал хураалт явуулъя` : `Төсөл ${code} төслийг хэлэлцэхийг дэмжье`,
+  voteType: isFinalReading ? "Эцэслэн батлах" : "Хэлэлцэх эсэх",
   support,
   oppose,
   total: support + oppose,
-  isFinalReading,
+  present: support + oppose,
   votedAt: null,
 });
 
@@ -38,8 +46,8 @@ const fakeClient = {
   },
   async getAgendaVoteList(code: string) {
     if (apiDown) throw new parliament.ParliamentApiError("УИХ-ын ParliamentAPI-тай холбогдож чадсангүй");
-    if (code === "A1") return [vote(40, 30, false), vote(70, 10, true)];
-    return [vote(30, 20, false)];
+    if (code === "A1") return [vote(code, 40, 30, false), vote(code, 70, 10, true)];
+    return [vote(code, 30, 20, false)];
   },
 };
 

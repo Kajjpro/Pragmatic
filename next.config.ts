@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/badges/**": ["./assets/fonts/**"], // тэмдгийн зурагт кирилл фонт
     "/api/staff/**": ["./data/*.json"], // санал хураалтын hook (Dev 2-ийн precomputed.json)
+    "/api/parliament/**": ["./data/snapshots/**"], // DB хоосон үеийн нөөц (npm run discover)
+    "/api/drafts": ["./data/snapshots/**"],
   },
 };
 

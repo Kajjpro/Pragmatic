@@ -17,6 +17,7 @@
 | `NEXT_PUBLIC_SITE_URL` | Сайтын бүтэн хаяг (OG зурагт хэрэгтэй), жишээ нь `https://hariu.vercel.app` | Vercel-ийн production домэйн |
 | `STAFF_EMAILS` | Ажилтны имэйлүүд, таслалаар | Багийн шийдвэр |
 | `PARLIAMENT_API_URL` | УИХ-ын ParliamentAPI-ийн үндсэн хаяг | Хакатоны зохион байгуулагч |
+| `PARLIAMENT_API_USER`, `PARLIAMENT_API_PASS` | ParliamentAPI-ийн нэвтрэх нэр, нууц үг (`POST /api/login`) | Хакатоны зохион байгуулагч |
 
 ### Сонголттой
 
@@ -24,7 +25,6 @@
 |---|---|
 | `DIRECT_URL` | `prisma migrate deploy`-д зориулсан шууд (pooled биш) холболт. Байхгүй бол `DATABASE_URL`-ийг хэрэглэнэ. |
 | `DATABASE_POOL_MAX` | Нэг функцийн холболтын дээд тоо (анхдагч 5). |
-| `PARLIAMENT_API_KEY` | ParliamentAPI түлхүүр шаардвал. |
 | `LAWFORUM_API_URL` | Анхдагч `https://lawforum.parliament.mn/LawForumAPI`. |
 | `STAFF_EMAIL_DOMAIN` | Энэ домэйны бүх имэйл ажилтан болно. |
 | `DEMO_CITIZEN_EMAIL`, `DEMO_CITIZEN_COMMENT` | Зөвхөн `npm run seed`-д: демо иргэний бүртгэл ба бодит санал. |
@@ -60,9 +60,13 @@ DATABASE_URL="<production шууд холболт>" npx prisma migrate deploy
 # 2. Агуулга: data/precomputed.json → DB (AI дуудахгүй, дахин ажиллуулж болно)
 DATABASE_URL="<production>" STAFF_EMAILS="..." npm run seed
 
-# 3. Санал хураалтын таамаг: ParliamentAPI → VoteEvent
-#    Ажилтнаар нэвтэрч POST /api/staff/vote-events/sync, эсвэл:
-DATABASE_URL="<production>" PARLIAMENT_API_URL="..." npm run vote -- sync
+# 3. УИХ-ын өгөгдөл: ParliamentAPI + LawForum → DB (асуудал, санал хураалт, хуралдаан, гишүүд, бүх төсөл,
+#    идэвхтэй төсөл → /bills, тоглоомын VoteEvent). ~1 минут, дахин ажиллуулж болно (upsert).
+#    Зөвхөн VoteEvent-ийг шинэчлэх бол ажилтнаар нэвтэрч POST /api/staff/vote-events/sync.
+DATABASE_URL="<production>" npm run vote -- sync      # PARLIAMENT_API_* нь .env-ээс
+
+#    DB хоосон үед /api/parliament/*, /api/drafts нь data/snapshots/-оос уншина. Snapshot-ийг шинэчлэх:
+npm run discover
 
 # 4. Бүх идэвхтэй хуулийн төсөл: LawForum → Project. АВТОМАТ: /bills анх нээгдэхэд татаж, 6 цаг тутам цаана нь шинэчилнэ.
 #    Гараар хүчээр шинэчлэх бол (дахин ажиллуулж болно, давхардуулахгүй):
