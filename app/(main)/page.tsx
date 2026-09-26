@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, BookOpenText, Vote } from "lucide-react";
+import { ArrowRight, BadgeCheck, BookOpenText, ExternalLink, Vote } from "lucide-react";
 import { buttonClass } from "@/components/ui/button";
 import { Container } from "@/components/ui/page-header";
 import { DiffLegend, DiffText } from "@/components/law/diff-text";
@@ -57,22 +57,29 @@ export default async function HomePage() {
   ]);
 
   const facts = [
-    stats.activeProjects !== null && {
-      value: stats.activeProjects.toLocaleString("mn-MN"),
-      label: "LawForum дээр идэвхтэй төсөл",
-      source: "LawForum",
+    stats.agendaCount !== null && {
+      value: stats.agendaCount.toLocaleString("mn-MN"),
+      label: "УИХ-ын хэлэлцэх асуудал",
+      source: "УИХ, ParliamentAPI",
     },
-    stats.citizenComments !== null && {
-      value: stats.citizenComments.toLocaleString("mn-MN"),
-      label: "Иргэдийн өгсөн санал",
-      source: "Хариу",
+    stats.draftCount !== null && {
+      value: stats.draftCount.toLocaleString("mn-MN"),
+      label: "LawForum-д нийтлэгдсэн хуулийн төсөл",
+      source: "LawForum",
     },
     stats.lastVoteDate !== null && {
       value: formatDate(new Date(stats.lastVoteDate)),
       label: "Сүүлийн санал хураалт",
       source: "УИХ-ын санал хураалт",
     },
-  ].filter((f): f is { value: string; label: string; source: string } => Boolean(f));
+    stats.citizenComments !== null && {
+      value: stats.citizenComments.toLocaleString("mn-MN"),
+      label: "Иргэдийн өгсөн санал",
+      source: "Хариу",
+    },
+  ]
+    .filter((f): f is { value: string; label: string; source: string } => Boolean(f))
+    .slice(0, 3);
 
   return (
     <>
@@ -137,6 +144,82 @@ export default async function HomePage() {
           </div>
         </Container>
       </section>
+
+      {/* УИХ-ын сүүлийн санал хураалтууд — зөвхөн тоо (төвийг сахина) */}
+      {stats.recentVotes.length > 0 ? (
+        <section className="border-t border-line bg-surface">
+          <Container className="py-14">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-[26px] font-bold">УИХ сүүлд юуг баталсан бэ</h2>
+                <p className="mt-2 max-w-2xl text-muted">Эцсийн санал хураалтын бодит дүн. Эх сурвалж: УИХ-ын санал хураалт.</p>
+              </div>
+              <Link href="/predict" className="inline-flex items-center gap-1 text-[15px] font-semibold text-action">
+                Дүнг таамаглаж тоглох <ArrowRight aria-hidden className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {stats.recentVotes.map((a) => {
+                const v = a.finalVote!;
+                const supportPct = v.total > 0 ? Math.round((v.support / v.total) * 100) : 0;
+                return (
+                  <article key={a.agendaCode} className="flex flex-col rounded-2xl border border-line bg-page p-5">
+                    {v.votedAt ? <p className="text-[13px] text-muted">{formatDate(new Date(v.votedAt))}</p> : null}
+                    <h3 className="mt-1 line-clamp-3 flex-1 text-[16.5px] font-bold leading-snug">{a.title}</h3>
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-2" aria-hidden>
+                      <div className="h-full bg-primary" style={{ width: `${supportPct}%` }} />
+                    </div>
+                    <dl className="mt-3 grid grid-cols-3 gap-2 text-[14px]">
+                      <div>
+                        <dt className="text-muted">Дэмжсэн</dt>
+                        <dd className="font-semibold tabular-nums text-heading">{v.support}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted">Татгалзсан</dt>
+                        <dd className="font-semibold tabular-nums text-heading">{v.oppose}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted">Нийт</dt>
+                        <dd className="font-semibold tabular-nums text-heading">{v.total}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                );
+              })}
+            </div>
+          </Container>
+        </section>
+      ) : null}
+
+      {/* LawForum-д сүүлд нийтлэгдсэн төслүүд */}
+      {stats.recentDrafts.length > 0 ? (
+        <section className="border-t border-line">
+          <Container className="py-14">
+            <h2 className="text-[26px] font-bold">Сүүлд нийтлэгдсэн хуулийн төслүүд</h2>
+            <p className="mt-2 max-w-2xl text-muted">УИХ-ын LawForum сайтад нийтлэгдсэн төслүүд. Дарж эх баримтыг нь үзнэ үү.</p>
+            <ul className="mt-6 flex flex-col gap-3">
+              {stats.recentDrafts.map((d) => (
+                <li key={d.id}>
+                  <a
+                    href={d.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start justify-between gap-4 rounded-xl border border-line bg-surface p-4 hover:border-primary"
+                  >
+                    <div>
+                      <p className="text-[16px] font-semibold leading-snug">{d.title}</p>
+                      <p className="mt-1 text-[13.5px] text-muted">
+                        {[d.categoryTitle, d.publishedAt ? formatDate(new Date(d.publishedAt)) : null].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                    <ExternalLink aria-hidden className="mt-1 h-4 w-4 shrink-0 text-muted" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Container>
+        </section>
+      ) : null}
 
       {/* Бодит харьцуулалтын жишээ */}
       {preview ? (
