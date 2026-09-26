@@ -24,7 +24,19 @@ export type SeedClause = {
 };
 
 export type SeedData = {
-  bills: { key: string; lawforumId?: number; title: string; summary: string; sourceUrl: string; comparison?: SeedClause[] }[];
+  bills: {
+    key: string;
+    lawforumId?: number;
+    title: string;
+    summary: string;
+    sourceUrl: string;
+    comparison?: SeedClause[];
+    // Демогоос бусад харьцуулалттай төслийн эх бичвэрүүд (scripts/add-comparison.ts бичнэ).
+    // Демо төсөл эдгээрийг data/law.txt, bill.txt, reason.txt-ээс уншина.
+    lawText?: string | null; // хүчин төгөлдөр хуулийн нэгдсэн эх
+    billText?: string | null; // төслийн албан ёсны эх бичвэр
+    reasonText?: string | null; // төслийн танилцуулга
+  }[];
   cards: {
     key: string;
     kind: "BILL" | "CHANGE";
@@ -110,24 +122,32 @@ export async function seedDatabase(data: SeedData, opts: SeedOptions = {}): Prom
   };
   const warn = (text: string) => report.warnings.push(text);
 
-  // 1. Төслүүд ба заалтууд. Харьцуулалттай төсөл (демо) л хуулийн текст, заалттай.
-  const demoBill = data.bills.find((b) => b.comparison && b.comparison.length > 0) ?? null;
+  // 1. Төслүүд ба заалтууд. Харьцуулалттай төсөл л хуулийн текст, заалттай.
+  //    Демо төсөл ("demo") нь саналууд, бүлгүүд хамаардаг тул тусад нь олдоно.
+  const withComparison = data.bills.filter((b) => b.comparison && b.comparison.length > 0);
+  const demoBill = withComparison.find((b) => b.key === "demo") ?? withComparison[0] ?? null;
   const stageText = readText(dir, "stage.txt");
   const demoStage: Stage = STAGES.includes(stageText as Stage) ? (stageText as Stage) : "FIRST_READING";
 
   const projectIdByKey = new Map<string, string>(); // төслийн key → DB id
   for (const bill of data.bills) {
     const isDemo = bill === demoBill;
+    const hasComparison = (bill.comparison ?? []).length > 0;
     const fields = {
       title: bill.title,
       description: bill.summary || null,
       slugUrl: bill.sourceUrl || null,
       source: bill.lawforumId ? ("LAWFORUM" as const) : ("UPLOAD" as const),
       stage: isDemo ? demoStage : ("DISCUSS_DECISION" as const),
-      // Төслийн жагсаалт зөвхөн хуулийн тексттэй (харьцуулалттай) төслийг харуулна
-      currentLawText: isDemo ? readText(dir, "law.txt") : null,
-      amendmentText: isDemo ? (readText(dir, "bill.txt") ?? bill.title) : null,
-      reasonText: isDemo ? readText(dir, "reason.txt") : null,
+      // Зөвхөн харьцуулалттай төсөл хуулийн текстээ хадгална (ажилтны жагсаалт үүгээр шүүгддэг).
+      // Демо төсөл файлаас, бусад нь precomputed.json-оос (scripts/add-comparison.ts).
+      currentLawText: isDemo ? readText(dir, "law.txt") : hasComparison ? (bill.lawText ?? null) : null,
+      amendmentText: isDemo
+        ? (readText(dir, "bill.txt") ?? bill.title)
+        : hasComparison
+          ? (bill.billText ?? bill.title)
+          : null,
+      reasonText: isDemo ? readText(dir, "reason.txt") : hasComparison ? (bill.reasonText ?? null) : null,
     };
     // lawforum-ын төсөл өмнө нь өөр id-тай орсон байж болох тул lawforumId-аар хайна
     const project = await prisma.project.upsert({
@@ -171,9 +191,10 @@ export async function seedDatabase(data: SeedData, opts: SeedOptions = {}): Prom
     if (!project) warn(`карт ${card.key}: төсөл "${card.projectKey}" алга — төсөлгүй хадгаллаа`);
     if (!card.sourceUrl) warn(`карт ${card.key}: sourceUrl хоосон`);
 
+    // CHANGE карт нь харьцуулалттай төслийн тухайн заалттай холбогдоно
     const clause =
-      card.clauseNumber && demoBill && card.projectKey === demoBill.key
-        ? await prisma.clause.findUnique({ where: { id: clauseId(demoBill.key, card.clauseNumber) }, select: { id: true } })
+      card.clauseNumber && withComparison.some((b) => b.key === card.projectKey)
+        ? await prisma.clause.findUnique({ where: { id: clauseId(card.projectKey, card.clauseNumber) }, select: { id: true } })
         : null;
     const personas = card.personas.filter((p): p is Persona => (PERSONAS as readonly string[]).includes(p));
 
@@ -284,8 +305,22 @@ export async function seedDatabase(data: SeedData, opts: SeedOptions = {}): Prom
   }
 
   if (opts.demoCitizenEmail) {
-    const citizen = await upsertSeedUser(opts.demoCitizenEmail, "CITIZEN");
+    let citizen = await upsertSeedUser(opts.demoCitizenEmail, "CITIZEN");
     report.demoCitizen = opts.demoCitizenEmail;
+
+    // Тэмдэг ("Хууль өөрчилсөн иргэн") зөвхөн CITIZEN эрхтэй хүнд олгогддог (lib/points.ts).
+    // Демо бүртгэл DB-д STAFF болчихсон байвал демо мөхөс болохгүйн тулд иргэн болгоно.
+    if (citizen.role === "STAFF") {
+      const alsoStaff = (opts.staffEmails ?? []).some(
+        (e) => e.trim().toLowerCase() === opts.demoCitizenEmail?.trim().toLowerCase(),
+      );
+      if (alsoStaff) {
+        warn(`${opts.demoCitizenEmail} нь STAFF_EMAILS-д ч байна — тэмдэг олгогдохгүй. Демо иргэнд өөр имэйл сонгоно уу`);
+      } else {
+        citizen = await prisma.user.update({ where: { id: citizen.id }, data: { role: "CITIZEN" } });
+        warn(`${opts.demoCitizenEmail}-г ажилтан (STAFF)-аас иргэн (CITIZEN) болголоо — тэмдэг олгогдох боломжтой болов`);
+      }
+    }
 
     // Демод "Тусгасан" гэж тэмдэглэх бүлэг
     const target = data.groups.find((g) => g.demoReflectable && seededGroups.has(g.key));

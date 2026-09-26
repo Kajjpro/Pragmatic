@@ -9,7 +9,13 @@ DATABASE_URL=<production DB>
 DEMO_CITIZEN_EMAIL=<демо иргэний Google имэйл>
 DEMO_CITIZEN_COMMENT=<багийн гишүүний бодит санал — демо дээр "Тусгасан" болно>
 STAFF_EMAILS=<ажилтны имэйл>
+GEMINI_FALLBACK_MODELS=gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite
 ```
+
+- **`DEMO_CITIZEN_EMAIL` нь `STAFF_EMAILS`-д байж БОЛОХГҮЙ.** "Хууль өөрчилсөн иргэн" тэмдэг зөвхөн
+  CITIZEN эрхтэй хэрэглэгчид олгогддог (`lib/points.ts`). Тэр имэйл DB-д STAFF болчихсон бол
+  `npm run seed` түүнийг CITIZEN болгоод анхааруулга хэвлэнэ — тэр ажилтны эрхээ алдана гэсэн үг.
+- `GEMINI_FALLBACK_MODELS` — үндсэн загвар 429 (лимит) өгөх үед AI зогсохгүйн тулд.
 
 ## 1. Өгөгдөл (зөвхөн `data/precomputed.json` шинэчлэгдсэн бол)
 
