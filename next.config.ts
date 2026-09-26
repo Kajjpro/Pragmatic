@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
     "/api/parliament/**": ["./data/snapshots/**"], // DB хоосон үеийн нөөц (npm run discover)
     "/api/drafts": ["./data/snapshots/**"],
   },
+
+  // Питчийн слайд: /pitch гэж богино бичихэд public/pitch/index.html нээгдэнэ
+  async rewrites() {
+    return [{ source: "/pitch", destination: "/pitch/index.html" }];
+  },
 };
 
 export default nextConfig;

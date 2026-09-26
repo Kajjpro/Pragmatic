@@ -462,9 +462,9 @@ async function buildVoteEvents(): Promise<PrecomputedVoteEvent[]> {
   console.log("\n══ 4. Санал хураалтын таамаг (ParliamentAPI)");
   const events: PrecomputedVoteEvent[] = [];
 
-  // a. ParliamentAPI-ийн хаяг (хакатоны зохион байгуулагчаас авна) тохируулаагүй бол алгасна
-  if (!process.env.PARLIAMENT_API_URL) {
-    console.log("   ✗ PARLIAMENT_API_URL .env-д алга → алгаслаа");
+  // a. ParliamentAPI-ийн нэвтрэх эрх (хакатоны зохион байгуулагчаас авна) тохируулаагүй бол алгасна
+  if (!process.env.PARLIAMENT_API_USER || !process.env.PARLIAMENT_API_PASS) {
+    console.log("   ✗ PARLIAMENT_API_USER / PARLIAMENT_API_PASS .env-д алга → алгаслаа");
     return events;
   }
 

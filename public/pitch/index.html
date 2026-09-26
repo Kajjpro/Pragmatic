@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Хариу — Питч</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=PT+Serif:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Аппын дизайн системтэй ИЖИЛ токенууд (app/globals.css :root).
+     Хөх өнгө огт хэрэглэхгүй — нүүрс саарал + маргад ногоон + намуухан шаргал. */
+  :root{
+    --page:#f9fafb; --surface:#ffffff; --surface-2:#f3f4f6;
+    --fg:#111827; --muted:#4b5563; --line:#e5e7eb; --line-strong:#d1d5db;
+    --primary:#1f2937; --on-primary:#ffffff;
+    --del-fg:#b91c1c; --del-bg:#fee2e2; --add-fg:#047857; --add-bg:#d1fae5;
+    --gold:#d97706; --gold-fg:#b45309; --gold-bg:#fffbeb; --gold-200:#fde68a;
+    --good:#059669; --good-fg:#047857; --good-bg:#ecfdf5;
+    --dark:#0a0a0b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+  h1,h2,h3,.serif{font-family:"PT Serif",Georgia,"Times New Roman",serif}
+
+  /* 16:9 тайз, дэлгэцэд багтаана */
+  #stage{position:fixed;inset:0;display:grid;place-items:center}
+  #deck{position:relative;width:1600px;height:900px;transform-origin:center;background:var(--page);overflow:hidden}
+
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:80px 96px}
+  .slide.on{display:flex}
+  .slide.dark{background:var(--dark);color:#fff}
+  .slide.dark .muted{color:rgba(255,255,255,.72)}
+
+  .eyebrow{font-size:23px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-fg)}
+  .dark .eyebrow{color:var(--gold-200)}
+  h1{font-size:92px;line-height:1.06;font-weight:700;letter-spacing:-.02em}
+  h2{font-size:64px;line-height:1.1;font-weight:700;letter-spacing:-.015em}
+  .lead{font-size:36px;line-height:1.45;font-weight:400;color:var(--muted)}
+  .dark .lead{color:rgba(255,255,255,.82)}
+  .muted{color:var(--muted)}
+  .small{font-size:24px;line-height:1.5;color:var(--muted)}
+  .mt-s{margin-top:18px}.mt-m{margin-top:34px}.mt-l{margin-top:54px}
+  em.gold{font-style:normal;color:var(--gold-fg);font-weight:700}
+  .dark em.gold{color:var(--gold-200)}
+  em.good{font-style:normal;color:var(--good-fg);font-weight:700}
+
+  .cards{display:grid;gap:20px;margin-top:40px}
+  .c3{grid-template-columns:repeat(3,1fr)} .c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:30px}
+  .dark .card{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
+  .card h3{font-size:31px;font-weight:700;line-height:1.18}
+  .card p{font-size:23px;line-height:1.45;color:var(--muted);margin-top:11px}
+  .dark .card p{color:rgba(255,255,255,.75)}
+
+  .pill{display:inline-block;border-radius:999px;padding:9px 22px;font-size:22px;font-weight:600;
+    background:var(--surface-2);color:var(--fg);border:1px solid var(--line)}
+  .pill.gold{background:var(--gold-bg);color:var(--gold-fg);border-color:var(--gold-200)}
+  .dark .pill{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.18)}
+
+  .steps{display:flex;gap:16px;margin-top:30px;flex-wrap:wrap}
+  .step{flex:1;min-width:230px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px}
+  .step .n{font-size:20px;font-weight:700;color:var(--gold-fg)}
+  .step .t{font-size:27px;font-weight:700;margin-top:5px;font-family:"PT Serif",Georgia,serif}
+  .step .d{font-size:20px;color:var(--muted);margin-top:7px;line-height:1.4}
+
+  /* Үг тутмын харьцуулалт — аппынхтай ижил өнгө */
+  .diff{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px 28px;font-size:26px;line-height:1.65;margin-top:26px}
+  .add{background:var(--add-bg);color:var(--add-fg);border-radius:5px;padding:1px 7px;font-weight:600}
+  .del{background:var(--del-bg);color:var(--del-fg);border-radius:5px;padding:1px 7px;text-decoration:line-through}
+
+  .stat{display:flex;gap:44px;margin-top:38px;flex-wrap:wrap}
+  .stat .v{font-size:66px;font-weight:700;line-height:1;font-family:"PT Serif",Georgia,serif}
+  .stat .k{font-size:21px;color:var(--muted);margin-top:8px;max-width:260px;line-height:1.35}
+  .dark .stat .k{color:rgba(255,255,255,.7)}
+
+  /* Сургуулийн лиг макет */
+  .league{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;margin-top:30px;align-items:center}
+  .phone{background:var(--dark);border-radius:38px;padding:12px;width:300px;margin:0 auto}
+  .screen{background:var(--page);border-radius:28px;padding:20px;height:400px}
+  .row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+  .row .rk{font-size:23px;font-weight:700;color:var(--muted);width:30px}
+  .row .nm{font-size:21px;font-weight:600;flex:1}
+  .row .pt{font-size:21px;font-weight:700;color:var(--gold-fg)}
+
+  footer{position:absolute;left:96px;right:96px;bottom:36px;display:flex;align-items:center;gap:18px;font-size:20px;font-weight:600;color:var(--muted)}
+  .dark footer{color:rgba(255,255,255,.6)}
+  .time{background:var(--gold-bg);color:var(--gold-fg);border:1px solid var(--gold-200);border-radius:999px;padding:6px 16px;font-weight:700}
+  .dark .time{background:rgba(255,255,255,.12);color:var(--gold-200);border-color:transparent}
+  .count{margin-left:auto}
+  .bar{position:absolute;left:0;bottom:0;height:6px;background:var(--primary)}
+  .dark .bar{background:var(--gold)}
+  .hint{position:fixed;right:14px;bottom:12px;color:#6b7280;font-size:13px;font-family:ui-monospace,monospace}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="stage"><div id="deck">
+
+<!-- 1 · ДЭГЭЭ (20 сек) -->
+<section class="slide dark on">
+  <div class="eyebrow">Нэг асуулт</div>
+  <h1 class="mt-s">Та УИХ-ыг хэдэн<br />настайдаа анх мэдсэн бэ?</h1>
+  <p class="lead mt-l">Бид 12-р ангийн сурагчид.<br />
+    <em class="gold">Хакатонд бүртгүүлэх хүртлээ</em> УИХ-д иргэдийн
+    платформ байдгийг мэдээгүй.</p>
+  <footer><span class="time">20 сек</span> Дэгээ <span class="count">1 / 7</span></footer>
+  <div class="bar" style="width:14.3%"></div>
+</section>
+
+<!-- 2 · АСУУДАЛ (30 сек) -->
+<section class="slide">
+  <div class="eyebrow">Асуудал</div>
+  <h2 class="mt-s">Хэрэгсэл бий. Хэрэглэгч алга.</h2>
+  <div class="cards c3">
+    <div class="card">
+      <h3>Платформ ажиллаж байна</h3>
+      <p>Хуулийн төслүүд lawforum.parliament.mn дээр нээлттэй байдаг. Бид өөрсдөө саяхан олж мэдсэн.</p>
+    </div>
+    <div class="card">
+      <h3>Залуус хуулиа мэдэхгүй</h3>
+      <p>Менторуудын хэлсэн: залуучууд УИХ-ыг ч, татварын хуулиа ч мэдэхгүй — мэдэхгүйгээ ч мэдэхгүй.</p>
+    </div>
+    <div class="card">
+      <h3>Санал цэгцгүй ирдэг</h3>
+      <p>Ирсэн саналыг ажилтан гараар уншиж, сэдвээс гадуурыг нь ялган цэгцэлдэг.</p>
+    </div>
+  </div>
+  <p class="small mt-m">Эдгээр нь бидний менторуудаас — УИХ-ын гишүүд, хуулийн зөвлөхөөс — сонссон зүйл. Судалгааны тоо биш.</p>
+  <footer><span class="time">30 сек</span> Асуудал <span class="count">2 / 7</span></footer>
+  <div class="bar" style="width:28.6%"></div>
+</section>
+
+<!-- 3 · ГОЛ САНАА (15 сек) -->
+<section class="slide dark">
+  <div class="eyebrow">Гол санаа</div>
+  <h2 class="mt-m">Бусад баг <em class="gold">хэрэгсэл</em> хийж байна.<br />
+    Бид тэр хэрэгслийг ашиглах <em class="gold">хүмүүсийг</em> бий болгоно.</h2>
+  <p class="lead mt-l">Дутагдаж байгаа нь технологи биш — дадал.</p>
+  <footer><span class="time">15 сек</span> Гол санаа <span class="count">3 / 7</span></footer>
+  <div class="bar" style="width:42.9%"></div>
+</section>
+
+<!-- 4 · АМЬД ДЕМО (2 мин) -->
+<section class="slide">
+  <div class="eyebrow">Амьд демо</div>
+  <h2 class="mt-s">Ойлго → Таамагла → Өөрчил</h2>
+  <div class="steps">
+    <div class="step"><div class="n">1 · Ойлго</div><div class="t">Хууль</div>
+      <div class="d">«Сурагч» сонгоно → 60 секундийн карт → 3 асуулт → оноо, дараалсан өдөр</div></div>
+    <div class="step"><div class="n">2 · Таамагла</div><div class="t">Таамаг</div>
+      <div class="d">Дэмжигдэх үү? → хэдэн гишүүн? → дүн нээгдэхэд тоолуур ажиллана</div></div>
+    <div class="step"><div class="n">3 · Өөрчил</div><div class="t">Тэмдэг</div>
+      <div class="d">Ажилтан «Тусгасан» дарна → иргэний утсанд тэмдэг нээгдэнэ → хуваалцана</div></div>
+  </div>
+  <div class="diff">
+    <span class="muted" style="font-size:20px;font-weight:600">Үл хөдлөх эд хөрөнгийн албан татварын тухай хууль · 7 дугаар зүйл</span><br />
+    <span class="add">7.8. Монгол Улсын иргэний өмчилж байгаа автозогсоолын зориулалттай нэг үл хөдлөх эд хөрөнгийг үл хөдлөх эд хөрөнгийн албан татвараас чөлөөлнө.</span>
+  </div>
+  <p class="small mt-s">Жинхэнэ төсөл · lawforum.parliament.mn/project/11171</p>
+  <footer><span class="time">2 мин</span> Демо <span class="count">4 / 7</span></footer>
+  <div class="bar" style="width:57.2%"></div>
+</section>
+
+<!-- 5 · ХӨДӨЛГҮҮР БА ИТГЭЛ (20 сек) -->
+<section class="slide">
+  <div class="eyebrow">Ард нь ажилладаг хөдөлгүүр</div>
+  <h2 class="mt-s">Хэн юуг хийдэг вэ</h2>
+  <div class="cards c2">
+    <div class="card"><h3>AI</h3>
+      <p>Тайлбарлах, ангилах, бүлэглэх, ноорог бичих. Зохиосон тоо, ишлэлийг кодоор автоматаар хаядаг.</p></div>
+    <div class="card"><h3>Код</h3>
+      <p>Үг тутмын харьцуулалт. Энд AI оролцдоггүй — тиймээс тодорсон үг бүр яг эх бичвэрийнх.</p></div>
+    <div class="card"><h3>Хүн</h3>
+      <p>Эцсийн шийдвэрийг УИХ-ын ажилтан гаргана. AI өөрөө хэзээ ч хариу илгээхгүй.</p></div>
+    <div class="card"><h3>Дүрэм</h3>
+      <p>Иргэний саналыг <em class="good">хэзээ ч устгадаггүй</em> — зөвхөн шошго тавьж, ажилтан буцаана. Гишүүн, намыг эрэмбэлэхгүй.</p></div>
+  </div>
+  <div class="stat">
+    <div><div class="v">14</div><div class="k">60 секундийн карт, 13 жинхэнэ төслөөс</div></div>
+    <div><div class="v">42</div><div class="k">сорилын асуулт — карт бүрт 3</div></div>
+    <div><div class="v">126</div><div class="k">УИХ-ын гишүүн — таамгийн тоглоомын хуваарь</div></div>
+  </div>
+  <footer><span class="time">20 сек</span> Итгэл <span class="count">5 / 7</span></footer>
+  <div class="bar" style="width:71.5%"></div>
+</section>
+
+<!-- 6 · ДАРААГИЙН ШАТ (15 сек) -->
+<section class="slide">
+  <div class="eyebrow">Дараагийн шат</div>
+  <h2 class="mt-s">Сургуулийн лиг</h2>
+  <div class="league">
+    <div>
+      <p class="lead">Багш анги үүсгэнэ. Сурагчид өдөр бүр нэг карт уншиж оноо цуглуулна. Сургуулиуд хооронд өрсөлдөнө.</p>
+      <p class="small mt-m">Нэг сургууль = олон зуун шинэ хэрэглэгч. Энэ бол тараах суваг — зар сурталчилгаа биш.</p>
+      <span class="pill gold" style="margin-top:26px">Хараахан хийгээгүй — зорилтот дүр зураг</span>
+    </div>
+    <div class="phone"><div class="screen">
+      <div style="font-size:20px;font-weight:700;margin-bottom:12px">Сургуулийн лиг</div>
+      <div class="row"><span class="rk">1</span><span class="nm">А сургууль</span><span class="pt">— оноо</span></div>
+      <div class="row"><span class="rk">2</span><span class="nm">Б сургууль</span><span class="pt">— оноо</span></div>
+      <div class="row"><span class="rk">3</span><span class="nm">В сургууль</span><span class="pt">— оноо</span></div>
+      <div class="row" style="border-color:var(--gold-200);background:var(--gold-bg)">
+        <span class="rk">?</span><span class="nm">Бидний анги</span><span class="pt">— оноо</span></div>
+      <div style="font-size:16px;color:var(--muted);margin-top:14px;line-height:1.4">
+        Жишиг зураглал — бодит тоо байхгүй</div>
+    </div></div>
+  </div>
+  <footer><span class="time">15 сек</span> Дараагийн шат <span class="count">6 / 7</span></footer>
+  <div class="bar" style="width:85.8%"></div>
+</section>
+
+<!-- 7 · ТӨГСГӨЛ (10 сек) -->
+<section class="slide dark">
+  <h1>Хууль 60 секундэд.<br /><em class="gold">Таамагла. Өөрчил.</em></h1>
+  <p class="lead mt-l" style="font-size:46px;font-weight:700;color:#fff;font-family:'PT Serif',Georgia,serif">Хариу</p>
+  <p class="small mt-m" style="color:rgba(255,255,255,.66)">
+    Эх сурвалж: lawforum.parliament.mn · УИХ-ын нээлттэй өгөгдөл
+  </p>
+  <footer><span class="time">10 сек</span> Төгсгөл <span class="count">7 / 7</span></footer>
+  <div class="bar" style="width:100%"></div>
+</section>
+
+</div></div>
+<div class="hint">← → сэлгэх · F бүтэн дэлгэц</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = 0;
+  function show(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    history.replaceState(null, '', '#' + (i + 1));
+  }
+  addEventListener('keydown', e => {
+    if (['ArrowRight','ArrowDown',' ','PageDown','Enter'].includes(e.key)) { e.preventDefault(); show(i+1); }
+    else if (['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i-1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key.toLowerCase() === 'f') {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+  });
+  addEventListener('click', () => show(i + 1));
+  const deck = document.getElementById('deck');
+  function fit(){ deck.style.transform = 'scale(' + Math.min(innerWidth/1600, innerHeight/900) + ')'; }
+  addEventListener('resize', fit); fit();
+  show(Number(location.hash.slice(1)) - 1 || 0);
+</script>
+</body>
+</html>

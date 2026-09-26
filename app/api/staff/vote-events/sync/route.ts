@@ -10,7 +10,7 @@ export const maxDuration = 60; // ParliamentAPI-аас олон асуудал �
 export async function POST() {
   try {
     await requireStaff();
-    return NextResponse.json(await syncVoteEvents());
+    return NextResponse.json(await syncVoteEvents(undefined, undefined, { discover: true }));
   } catch (e) {
     if (e instanceof ParliamentApiError) {
       return handleError(new HttpError(503, `${e.message}. Одоо байгаа санал хураалтууд хэвээр ажиллана.`));
