@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 // Харилцах цонх (гар утсанд доороос, компьютерт голд). Esc дарж хаана, фокус цонх руу шилжинэ.
+// body руу portal-оор гаргана: толгойн backdrop-blur нь fixed элементийг толгой дотор хоригладаг.
 export function Sheet({
   open,
   onClose,
@@ -32,10 +34,10 @@ export function Sheet({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
       <button
         type="button"
         aria-label="Хаах"
@@ -48,7 +50,7 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative z-10 w-full max-w-lg animate-rise rounded-t-lg border border-line bg-surface p-5 shadow-lift outline-none sm:rounded-lg"
+        className="relative z-10 max-h-[90dvh] w-full max-w-lg animate-rise overflow-y-auto overscroll-contain rounded-t-lg border border-line bg-surface p-5 shadow-lift outline-none sm:rounded-lg"
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-[19px] font-bold">{title}</h2>
@@ -63,6 +65,7 @@ export function Sheet({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
