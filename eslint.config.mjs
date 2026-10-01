@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Remotion pitch видео — тусдаа төсөл
+    "pitch/video/**",
   ]),
 ]);
 
